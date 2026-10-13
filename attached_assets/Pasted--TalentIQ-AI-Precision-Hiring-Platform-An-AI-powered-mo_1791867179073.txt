@@ -1,0 +1,447 @@
+# 🧠 TalentIQ AI — Precision Hiring Platform
+
+> **An AI-powered mobile hiring platform that matches candidates to jobs with intelligent scoring, skill-gap analysis, and proctored assessments.**
+
+---
+
+## 📋 Table of Contents
+
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Features](#features)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Environment Setup](#environment-setup)
+  - [Running the Project](#running-the-project)
+- [API Reference](#api-reference)
+- [Database Schema](#database-schema)
+- [Screens & Navigation](#screens--navigation)
+- [AI Capabilities](#ai-capabilities)
+- [Contributing](#contributing)
+
+---
+
+## Overview
+
+**TalentIQ AI** is a full-stack mobile application that reimagines the hiring process. Built for both **Job Seekers** and **HR Professionals**, it uses generative AI to:
+
+- **Match candidates** to job postings with a precise score
+- **Identify skill gaps** between a candidate's resume and a job's requirements
+- **Generate intelligent assessments** (MCQ / Aptitude / Coding) tailored per role
+- **Monitor assessment integrity** with proctoring metadata
+- **Provide an HR overview** of open roles, candidate pipelines, and top matches
+
+The project is a **monorepo** containing two sub-packages:
+
+| Package | Description |
+|---|---|
+| `mobile/` | React Native (Expo) cross-platform app |
+| `server/` | Node.js + Express REST API |
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                     TalentIQ AI                         │
+│                                                         │
+│  ┌──────────────────┐        ┌─────────────────────┐    │
+│  │   Mobile App     │◄──────►│   Express REST API  │    │
+│  │  React Native    │  HTTP  │   Node.js / TS      │    │
+│  │  Expo / NativeWind│        │   Port: 5001        │    │
+│  └──────────────────┘        └──────────┬──────────┘    │
+│                                         │               │
+│                              ┌──────────▼──────────┐    │
+│                              │    MongoDB Atlas     │    │
+│                              │  (via Prisma ORM)   │    │
+│                              └──────────┬──────────┘    │
+│                                         │               │
+│                              ┌──────────▼──────────┐    │
+│                              │   OpenAI / Google   │    │
+│                              │   Generative AI     │    │
+│                              └─────────────────────┘    │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Tech Stack
+
+### 📱 Mobile (`mobile/`)
+
+| Technology | Purpose |
+|---|---|
+| **React Native 0.74** | Cross-platform mobile framework |
+| **Expo** | Dev toolchain, build system |
+| **NativeWind v4** | Tailwind CSS styling for React Native |
+| **React Navigation v7** | Stack + Bottom Tab navigation |
+| **React Native Reanimated v4** | Fluid micro-animations |
+| **TanStack Query v5** | Server state management & caching |
+| **Zustand v4** | Global auth & UI state |
+| **Axios** | HTTP client |
+| **TypeScript** | Type safety |
+
+### 🖥️ Server (`server/`)
+
+| Technology | Purpose |
+|---|---|
+| **Node.js + Express v4** | REST API server |
+| **TypeScript** | Type safety |
+| **Prisma ORM v6** | Database access layer |
+| **MongoDB Atlas** | Cloud NoSQL database |
+| **Vercel AI SDK v7** | Unified AI model interface |
+| **OpenAI GPT-4o-mini** | Question generation, resume analysis |
+| **Google Gemini** | Swappable AI alternative |
+| **JWT** | Stateless authentication |
+| **bcryptjs** | Password hashing |
+| **Zod v4** | Request validation & AI schema enforcement |
+| **Multer** | File uploads (resume PDF) |
+
+---
+
+## Project Structure
+
+```
+mobappdev/
+├── start.bat                    # One-click launcher for both services
+├── fix_and_start.bat            # Troubleshooting launcher
+│
+├── mobile/                      # React Native (Expo) app
+│   ├── src/
+│   │   ├── screens/
+│   │   │   ├── index.tsx        # Splash screen with auth routing
+│   │   │   ├── onboarding.tsx   # Welcome / onboarding carousel
+│   │   │   ├── login.tsx        # Email + password login
+│   │   │   ├── register.tsx     # User registration
+│   │   │   ├── role-selection.tsx # Job Seeker vs HR role picker
+│   │   │   ├── forgot-password.tsx
+│   │   │   ├── otp.tsx          # OTP verification
+│   │   │   ├── resume.tsx       # Resume upload & profile builder
+│   │   │   ├── assessment.tsx   # In-app proctored assessment
+│   │   │   ├── ai-insights.tsx  # AI match score & skill gap view
+│   │   │   ├── hr-dashboard.tsx # HR: open roles, pipelines, stats
+│   │   │   └── (tabs)/
+│   │   │       ├── _layout.tsx  # Animated floating tab bar
+│   │   │       ├── index.tsx    # Home feed (job seeker)
+│   │   │       ├── jobs.tsx     # Job listings & search
+│   │   │       ├── applications.tsx # Application tracker
+│   │   │       └── profile.tsx  # User profile management
+│   │   └── navigation/
+│   ├── components/
+│   │   └── ui/
+│   │       ├── GlassCard.tsx    # Glassmorphism card component
+│   │       └── AnimatedButton.tsx # Spring-animated CTA button
+│   ├── services/
+│   │   └── api.ts               # Axios instance with auth interceptors
+│   ├── store/
+│   │   └── authStore.ts         # Zustand auth store (JWT, user, role)
+│   └── assets/
+│
+└── server/                      # Express API
+    ├── src/
+    │   ├── index.ts             # Entry point, route mounting
+    │   ├── config/
+    │   │   └── env.ts           # Environment configuration
+    │   ├── routes/
+    │   │   ├── authRoutes.ts    # /api/auth
+    │   │   ├── jobRoutes.ts     # /api/jobs
+    │   │   ├── profileRoutes.ts # /api/profile
+    │   │   ├── hrRoutes.ts      # /api/hr
+    │   │   ├── aiRoutes.ts      # /api/ai
+    │   │   └── assessmentRoutes.ts # /api/assessment
+    │   ├── controllers/
+    │   │   ├── authController.ts
+    │   │   ├── jobController.ts
+    │   │   ├── profileController.ts
+    │   │   ├── hrController.ts
+    │   │   ├── aiController.ts
+    │   │   └── assessmentController.ts
+    │   ├── services/
+    │   │   └── aiService.ts     # Vercel AI SDK wrapper
+    │   ├── middlewares/
+    │   └── utils/
+    └── prisma/
+        └── schema.prisma        # Data models (MongoDB)
+```
+
+---
+
+## Features
+
+### 👤 Job Seekers
+- 📝 **Profile & Resume Builder** — upload resume PDF, list skills, experience, education
+- 🔍 **Job Discovery** — browse and search active job listings
+- 📊 **AI Match Score** — see a numerical match score against any job
+- 🔬 **Skill Gap Analysis** — AI identifies your strengths vs. missing skills
+- 📋 **Application Tracker** — view all your applications with live status (`APPLIED → SHORTLISTED → HIRED/REJECTED`)
+- 🧪 **Smart Assessments** — take AI-generated MCQ/Aptitude/Coding tests per role
+
+### 🏢 HR Professionals
+- 📈 **HR Dashboard** — overview of open roles, top matches, total applicants
+- 🗂️ **Active Pipelines** — per-job candidate funnel visualization
+- 🤖 **AI Recommendations** — auto-ranked candidate shortlists
+- ✅ **Assessment Management** — create, assign, and review assessments
+- 🔒 **Integrity Monitoring** — log focus-loss, background switches, and network events during assessments
+
+### 🛡️ Authentication
+- Role-based access (`JOB_SEEKER`, `HR`, `ADMIN`)
+- JWT token authentication with auto-routing on app open
+- Password hashing with bcryptjs
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+Ensure you have the following installed:
+
+| Tool | Version | Notes |
+|---|---|---|
+| Node.js | ≥ 20.x | [Download](https://nodejs.org) |
+| npm | ≥ 10.x | Bundled with Node |
+| Expo CLI | Latest | `npm install -g expo-cli` |
+| Android Studio | Latest | For Android emulator |
+| MongoDB Atlas account | — | Free tier works |
+| OpenAI API Key | — | For AI features (optional — has fallback) |
+
+---
+
+### Environment Setup
+
+Create or update `server/.env`:
+
+```env
+PORT=5001
+DATABASE_URL="mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/talentiq?appName=Cluster0"
+JWT_SECRET="your_super_secret_jwt_key"
+OPENAI_API_KEY="sk-..."       # Optional: AI falls back to mock data if missing
+```
+
+> [!NOTE]
+> The AI service gracefully falls back to mock assessment questions if no valid API key is provided, so the app is fully functional without an OpenAI key during development.
+
+---
+
+### Running the Project
+
+#### ⚡ One-click start (Windows)
+
+```bat
+./start.bat
+```
+
+This opens two terminal windows — one for the backend, one for the mobile app.
+
+---
+
+#### Manual Start
+
+**Backend Server:**
+```bash
+cd server
+npm install
+npm run build    # Generates Prisma client + compiles TypeScript
+npm run dev      # Starts tsx watch mode on port 5001
+```
+
+**Mobile App:**
+```bash
+cd mobile
+npm install
+npx expo start   # Opens Expo Dev Tools
+```
+
+Then press:
+- `a` — run on Android emulator
+- `i` — run on iOS simulator (macOS only)
+- `w` — run in browser (web mode)
+
+> [!TIP]
+> Use the **Expo Go** app on your physical device and scan the QR code for the fastest development experience.
+
+---
+
+## API Reference
+
+All routes are prefixed with `/api`. Protected routes require `Authorization: Bearer <token>`.
+
+### Auth — `/api/auth`
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `/register` | ❌ | Register a new user |
+| POST | `/login` | ❌ | Login and receive JWT |
+
+### Jobs — `/api/jobs`
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/` | ✅ | List all active jobs |
+| GET | `/:id` | ✅ | Get job details |
+| POST | `/` | ✅ HR | Create a job posting |
+
+### Profile — `/api/profile`
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/` | ✅ | Get current user's profile |
+| POST | `/` | ✅ | Create or update profile |
+| POST | `/resume` | ✅ | Upload resume PDF (multipart) |
+
+### HR — `/api/hr`
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/dashboard` | ✅ HR | Overview stats (roles, matches) |
+| GET | `/applicants/:jobId` | ✅ HR | Get applicants for a job |
+
+### AI — `/api/ai`
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/match/:jobId` | ✅ | AI match score & gap analysis for current user vs job |
+
+### Assessments — `/api/assessment`
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/:jobId` | ✅ | Get assessment for a job |
+| POST | `/generate` | ✅ HR | AI-generate assessment questions |
+| POST | `/:id/submit` | ✅ | Submit answers & receive score |
+
+### Health Check
+
+```
+GET /api/health
+→ { "status": "ok", "message": "TalentIQ AI API is running" }
+```
+
+---
+
+## Database Schema
+
+Built with **Prisma ORM** targeting **MongoDB Atlas**.
+
+```
+User ─── Profile (1:1)
+User ─── Application[] (1:N)
+User ─── AssessmentAttempt[] (1:N)
+User ─── Company? (via companyId)
+
+Company ─── Job[] (1:N)
+Company ─── User[] (recruiters)
+
+Job ─── Application[] (1:N)
+Job ─── Assessment[] (1:N)
+
+Assessment ─── AssessmentAttempt[] (1:N)
+```
+
+### Key Models
+
+| Model | Key Fields |
+|---|---|
+| `User` | email, password, name, role (`JOB_SEEKER` / `HR` / `ADMIN`) |
+| `Profile` | resumeUrl, skills[], experience, education, aiSummary |
+| `Job` | title, description, requirements[], skills[], type, isActive |
+| `Application` | status, matchScore, skillMatch, experienceMatch, aiRecommendations |
+| `Assessment` | type (`MCQ`/`CODING`/`APTITUDE`), questions (JSON), duration |
+| `AssessmentAttempt` | score, integrityScore, integrityLogs (focus-loss events) |
+
+---
+
+## Screens & Navigation
+
+```
+App Launch
+  └── SplashScreen (index.tsx)
+        ├── [Not Authenticated] → Onboarding → Login / Register → Role Selection
+        └── [Authenticated]
+              ├── [HR Role] → HR Dashboard
+              └── [Job Seeker] → Tab Navigator
+                    ├── 🏠 Home
+                    ├── 💼 Jobs → AI Insights
+                    ├── 📋 Applications
+                    └── 👤 Profile → Resume Upload
+                                   → Assessment
+```
+
+### Animated Floating Tab Bar
+
+The tab bar is a floating pill-shaped navigator using `react-native-reanimated` spring animations. The active tab icon expands with a spring effect, revealing the label text with a smooth fade-in.
+
+---
+
+## AI Capabilities
+
+### 1. AI Match Scoring (`/api/ai/match/:jobId`)
+
+When called, the AI engine:
+1. Fetches the candidate's profile (skills, experience, resume summary)
+2. Fetches the job's required skills and description
+3. Calls the LLM to return a structured JSON with:
+   - `matchScore` (0–100)
+   - `strengths[]` — skills the candidate already has
+   - `missingSkills[]` — skill gaps to address
+   - `recommendation` — a written paragraph of personalised advice
+
+### 2. Assessment Generation (`/api/assessment/generate`)
+
+The AI generates role-specific questions using Zod schema enforcement:
+```typescript
+z.object({
+  questions: z.array(z.object({
+    prompt: z.string(),
+    options: z.array(z.string()).optional(),
+    correctAnswer: z.string(),
+    difficulty: z.enum(["Easy", "Medium", "Hard"])
+  }))
+})
+```
+
+> [!IMPORTANT]
+> To swap from OpenAI to Google Gemini, change one line in `server/src/services/aiService.ts`:
+> ```ts
+> // From:
+> model: openai('gpt-4o-mini'),
+> // To:
+> model: google('gemini-1.5-flash'),
+> ```
+
+---
+
+## Contributing
+
+1. **Fork** the repository
+2. **Create** a feature branch: `git checkout -b feature/your-feature`
+3. **Commit** changes: `git commit -m "feat: add your feature"`
+4. **Push** to the branch: `git push origin feature/your-feature`
+5. **Open** a Pull Request
+
+### Commit Convention
+
+This project follows [Conventional Commits](https://www.conventionalcommits.org/):
+
+| Prefix | When to use |
+|---|---|
+| `feat:` | New feature |
+| `fix:` | Bug fix |
+| `chore:` | Tooling / dependencies |
+| `docs:` | Documentation |
+| `refactor:` | Code refactor without feature change |
+
+---
+
+## 📄 License
+
+MIT © 2026 TalentIQ AI Team
+
+---
+
+<div align="center">
+  <strong>Built with ❤️ for smarter hiring</strong>
+</div>
