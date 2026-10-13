@@ -1,0 +1,1 @@
+- [Expo package maturity](expo-package-maturity.md) — do not bypass the package firewall when fresh SDK-native releases are too new to install.

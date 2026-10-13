@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: talentiq
+    description: AI hiring intelligence
 paths:
   /healthz:
     get:
@@ -24,6 +26,66 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /talentiq/match-analysis:
+    post:
+      operationId: analyzeTalentMatch
+      tags: [talentiq]
+      summary: Analyze candidate fit for a role
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MatchAnalysisRequest"
+      responses:
+        "200":
+          description: Candidate match analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchAnalysisResponse"
+        "400":
+          description: Invalid match request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: AI service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /talentiq/assessments/generate:
+    post:
+      operationId: generateTalentAssessment
+      tags: [talentiq]
+      summary: Generate a role-specific multiple-choice assessment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssessmentGenerationRequest"
+      responses:
+        "200":
+          description: Generated assessment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssessmentGenerationResponse"
+        "400":
+          description: Invalid assessment request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: AI service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +95,137 @@ components:
           type: string
       required:
         - status
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+    MatchAnalysisRequest:
+      type: object
+      properties:
+        candidateName:
+          type: string
+        yearsExperience:
+          type: integer
+          minimum: 0
+          maximum: 60
+        candidateSkills:
+          type: array
+          items:
+            type: string
+        jobTitle:
+          type: string
+        company:
+          type: string
+        description:
+          type: string
+        requiredSkills:
+          type: array
+          items:
+            type: string
+      required:
+        - candidateName
+        - yearsExperience
+        - candidateSkills
+        - jobTitle
+        - company
+        - description
+        - requiredSkills
+    MatchAnalysisResponse:
+      type: object
+      properties:
+        matchScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+        strengths:
+          type: array
+          items:
+            type: string
+        missingSkills:
+          type: array
+          items:
+            type: string
+        recommendation:
+          type: string
+        skillMatch:
+          type: integer
+          minimum: 0
+          maximum: 100
+        experienceMatch:
+          type: integer
+          minimum: 0
+          maximum: 100
+        roleFit:
+          type: integer
+          minimum: 0
+          maximum: 100
+      required:
+        - matchScore
+        - strengths
+        - missingSkills
+        - recommendation
+        - skillMatch
+        - experienceMatch
+        - roleFit
+    AssessmentGenerationRequest:
+      type: object
+      properties:
+        jobTitle:
+          type: string
+        requiredSkills:
+          type: array
+          items:
+            type: string
+        assessmentType:
+          type: string
+          enum: [MCQ, APTITUDE]
+        questionCount:
+          type: integer
+          minimum: 3
+          maximum: 10
+      required:
+        - jobTitle
+        - requiredSkills
+        - assessmentType
+        - questionCount
+    AssessmentQuestion:
+      type: object
+      properties:
+        prompt:
+          type: string
+        options:
+          type: array
+          items:
+            type: string
+        correctAnswer:
+          type: string
+        explanation:
+          type: string
+        difficulty:
+          type: string
+          enum: [Easy, Medium, Hard]
+      required:
+        - prompt
+        - options
+        - correctAnswer
+        - explanation
+        - difficulty
+    AssessmentGenerationResponse:
+      type: object
+      properties:
+        title:
+          type: string
+        durationMinutes:
+          type: integer
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssessmentQuestion"
+      required:
+        - title
+        - durationMinutes
+        - questions
 
