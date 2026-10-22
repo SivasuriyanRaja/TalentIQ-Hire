@@ -72,7 +72,7 @@ export default function JobDetailScreen() {
       setNotice('You have already applied for this role.');
       return;
     }
-    applyToJob(job.id);
+    applyToJob(job.id, job.title, job.company, previewScore);
     setNotice(`Application sent to ${job.company}. You can track it in Activity.`);
   };
 
@@ -145,12 +145,27 @@ export default function JobDetailScreen() {
           <Text style={[styles.fitNote, { color: colors.mutedForeground }]}>
             A quick skills overlap—not an AI assessment. Ask TalentIQ for a role-specific analysis.
           </Text>
-          <PrimaryButton
-            label={analysis.isPending ? 'Analyzing your profile' : 'Get AI match insights'}
-            icon="zap"
-            loading={analysis.isPending}
-            onPress={runAnalysis}
-          />
+          <View style={styles.aiActions}>
+            <PrimaryButton
+              label="Full AI insights"
+              icon="zap"
+              onPress={() => router.push({ pathname: '/ai-insights', params: { jobId: job.id } })}
+            />
+            <Pressable
+              onPress={runAnalysis}
+              disabled={analysis.isPending}
+              style={({ pressed }) => [styles.quickAnalysis, { borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+            >
+              {analysis.isPending ? (
+                <Text style={[styles.quickAnalysisText, { color: colors.mutedForeground }]}>Analysing…</Text>
+              ) : (
+                <>
+                  <Feather name="refresh-cw" size={13} color={colors.mutedForeground} />
+                  <Text style={[styles.quickAnalysisText, { color: colors.mutedForeground }]}>Quick check</Text>
+                </>
+              )}
+            </Pressable>
+          </View>
           {analysis.data ? (
             <View style={styles.analysisBlock}>
               <View style={styles.analysisHeader}>
@@ -257,6 +272,17 @@ function ScoreRow({ label, value }: { label: string; value: number }) {
 }
 
 const styles = StyleSheet.create({
+  aiActions: { gap: 10 },
+  quickAnalysis: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    height: 44,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  quickAnalysisText: { fontFamily: 'Inter_500Medium', fontSize: 12 },
   nav: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   back: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 5 },
   backText: { fontFamily: 'Inter_600SemiBold', fontSize: 13 },

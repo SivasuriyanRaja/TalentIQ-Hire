@@ -56,7 +56,7 @@ export default function WelcomeScreen() {
           <Value icon="message-circle" title="Show your skills" body="Proof, not just keywords" />
         </View>
         <Pressable
-          onPress={() => router.push('/(auth)/sign-up')}
+          onPress={() => router.push('/onboarding')}
           style={({ pressed }) => [
             styles.createButton,
             { backgroundColor: colors.primary, opacity: pressed ? 0.86 : 1 },

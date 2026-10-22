@@ -53,3 +53,6 @@ Thumbs.db
 .env.local
 .env.*.local
 *.env
+
+# User-uploaded files (resume files stored by API server)
+artifacts/api-server/uploads/

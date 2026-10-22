@@ -35,7 +35,14 @@ export interface CandidateProfile {
   yearsExperience: number;
   skills: string[];
   education: string;
+  /** External portfolio or resume URL (backward-compatible) */
   resumeLink: string;
+  /** Name of the uploaded resume file (from cloud) */
+  resumeFileName?: string;
+  /** Size in bytes of the uploaded resume file */
+  resumeFileSizeBytes?: number;
+  /** AI-extracted skills from the uploaded resume */
+  extractedSkills?: string[];
 }
 
 export interface AssessmentAttempt {
@@ -55,6 +62,9 @@ export const initialProfile: CandidateProfile = {
   skills: ['React', 'TypeScript', 'Product Design', 'Node.js'],
   education: 'B.S. Computer Science',
   resumeLink: '',
+  resumeFileName: undefined,
+  resumeFileSizeBytes: undefined,
+  extractedSkills: [],
 };
 
 export const sampleJobs: Job[] = [

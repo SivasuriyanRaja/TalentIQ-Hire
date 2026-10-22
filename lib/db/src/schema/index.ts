@@ -126,3 +126,142 @@ const AssessmentSchema = new Schema<IAssessment>(
 export const Assessment =
   mongoose.models.Assessment ??
   mongoose.model<IAssessment>("Assessment", AssessmentSchema);
+
+// ─── UserProfile (cloud-synced candidate profile) ──────────────────────────
+
+export interface IUserProfile extends Document {
+  userId: string;              // Clerk userId — unique per user
+  name: string;
+  headline: string;
+  location: string;
+  yearsExperience: number;
+  skills: string[];            // manually entered skills
+  education: string;
+  resumeLink: string;          // optional external URL (backwards-compat)
+  resumeFileKey?: string;      // storage key / filename on server disk
+  resumeFileName?: string;     // original file name shown in UI
+  resumeFileMime?: string;     // MIME type of uploaded file
+  resumeFileSizeBytes?: number;
+  extractedSkills: string[];   // AI-extracted skills from uploaded resume
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const UserProfileSchema = new Schema<IUserProfile>(
+  {
+    userId: { type: String, required: true, unique: true, index: true },
+    name: { type: String, required: true, maxlength: 120 },
+    headline: { type: String, maxlength: 200, default: "" },
+    location: { type: String, maxlength: 200, default: "" },
+    yearsExperience: { type: Number, min: 0, max: 60, default: 0 },
+    skills: [{ type: String, maxlength: 100 }],
+    education: { type: String, maxlength: 300, default: "" },
+    resumeLink: { type: String, maxlength: 500, default: "" },
+    resumeFileKey: { type: String, maxlength: 300 },
+    resumeFileName: { type: String, maxlength: 260 },
+    resumeFileMime: { type: String, maxlength: 100 },
+    resumeFileSizeBytes: { type: Number, min: 0 },
+    extractedSkills: [{ type: String, maxlength: 100 }],
+  },
+  { timestamps: true },
+);
+
+export const UserProfile =
+  mongoose.models.UserProfile ??
+  mongoose.model<IUserProfile>("UserProfile", UserProfileSchema);
+
+// ─── CloudApplication (cross-device candidate application tracker) ─────────
+
+export interface ICloudApplication extends Document {
+  userId: string;
+  jobId: string;
+  jobTitle: string;
+  company: string;
+  status: "Applied" | "Shortlisted" | "Interview" | "Offer" | "Rejected";
+  matchScore: number;
+  appliedAt: string; // ISO string
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const CloudApplicationSchema = new Schema<ICloudApplication>(
+  {
+    userId: { type: String, required: true, index: true },
+    jobId: { type: String, required: true, maxlength: 200 },
+    jobTitle: { type: String, required: true, maxlength: 160 },
+    company: { type: String, required: true, maxlength: 160 },
+    status: {
+      type: String,
+      enum: ["Applied", "Shortlisted", "Interview", "Offer", "Rejected"],
+      default: "Applied",
+    },
+    matchScore: { type: Number, min: 0, max: 100, default: 0 },
+    appliedAt: { type: String, required: true },
+  },
+  { timestamps: true },
+);
+
+// Prevent duplicate applications per user+job
+CloudApplicationSchema.index({ userId: 1, jobId: 1 }, { unique: true });
+
+export const CloudApplication =
+  mongoose.models.CloudApplication ??
+  mongoose.model<ICloudApplication>("CloudApplication", CloudApplicationSchema);
+
+// ─── RecruiterStageUpdate (cross-device recruiter pipeline stages) ─────────
+
+export interface IRecruiterStageUpdate extends Document {
+  recruiterId: string;   // Clerk userId of recruiter
+  candidateName: string;
+  status: "Applied" | "Shortlisted" | "Interview" | "Offer" | "Rejected";
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const RecruiterStageUpdateSchema = new Schema<IRecruiterStageUpdate>(
+  {
+    recruiterId: { type: String, required: true, index: true },
+    candidateName: { type: String, required: true, maxlength: 120 },
+    status: {
+      type: String,
+      enum: ["Applied", "Shortlisted", "Interview", "Offer", "Rejected"],
+      default: "Applied",
+    },
+  },
+  { timestamps: true },
+);
+
+RecruiterStageUpdateSchema.index(
+  { recruiterId: 1, candidateName: 1 },
+  { unique: true },
+);
+
+export const RecruiterStageUpdate =
+  mongoose.models.RecruiterStageUpdate ??
+  mongoose.model<IRecruiterStageUpdate>(
+    "RecruiterStageUpdate",
+    RecruiterStageUpdateSchema,
+  );
+
+// ─── SavedJob (cross-device saved job tracker) ────────────────────────────
+
+export interface ISavedJob extends Document {
+  userId: string;
+  jobId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const SavedJobSchema = new Schema<ISavedJob>(
+  {
+    userId: { type: String, required: true, index: true },
+    jobId: { type: String, required: true, maxlength: 200 },
+  },
+  { timestamps: true },
+);
+
+SavedJobSchema.index({ userId: 1, jobId: 1 }, { unique: true });
+
+export const SavedJob =
+  mongoose.models.SavedJob ??
+  mongoose.model<ISavedJob>("SavedJob", SavedJobSchema);

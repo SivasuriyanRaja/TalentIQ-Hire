@@ -41,6 +41,9 @@ function RootLayoutNav() {
       <Stack.Screen name="job/[id]" />
       <Stack.Screen name="assessment" />
       <Stack.Screen name="create-job" />
+      <Stack.Screen name="onboarding" />
+      <Stack.Screen name="ai-insights" />
+      <Stack.Screen name="hr-dashboard" />
     </Stack>
   );
 }

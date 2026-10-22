@@ -36,6 +36,7 @@ export default function HomeScreen() {
     return (
       <RecruiterHome
         onCreate={() => router.push('/create-job')}
+        onDashboard={() => router.push('/hr-dashboard')}
         onCandidates={() => router.push('/(tabs)/applications')}
         onDiscover={() => router.push('/(tabs)/jobs')}
       />
@@ -131,10 +132,12 @@ function Metric({ value, label }: { value: string; label: string }) {
 
 function RecruiterHome({
   onCreate,
+  onDashboard,
   onCandidates,
   onDiscover,
 }: {
   onCreate: () => void;
+  onDashboard: () => void;
   onCandidates: () => void;
   onDiscover: () => void;
 }) {
@@ -157,7 +160,8 @@ function RecruiterHome({
         <Text style={[styles.heroBody, { color: colors.background }]}>
           Find stronger signals, keep candidates moving, and spend more time in meaningful conversations.
         </Text>
-        <PrimaryButton label="Post a new role" icon="plus" onPress={onCreate} />
+        <PrimaryButton label="View full dashboard" icon="bar-chart-2" onPress={onDashboard} />
+        <PrimaryButton label="Post a new role" icon="plus" tone="dark" onPress={onCreate} />
       </View>
       <View style={styles.metrics}>
         <Metric value={String(customJobs.length || 4).padStart(2, '0')} label="Open roles" />
