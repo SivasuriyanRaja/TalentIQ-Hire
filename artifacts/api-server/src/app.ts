@@ -46,15 +46,52 @@ app.use(cors({ credentials: true, origin: true }));
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-// Clerk middleware for auth
-app.use(
-  clerkMiddleware((req) => ({
-    publishableKey: publishableKeyFromHost(
-      getClerkProxyHost(req) ?? "",
-      process.env.CLERK_PUBLISHABLE_KEY,
-    ),
-  })),
-);
+// Clerk middleware for auth (with dev fallback if keys are placeholders)
+const clerkPubKey = process.env.CLERK_PUBLISHABLE_KEY;
+const clerkSecKey = process.env.CLERK_SECRET_KEY;
+const isClerkConfigured =
+  Boolean(clerkPubKey) &&
+  !clerkPubKey?.includes("REPLACE") &&
+  Boolean(clerkSecKey) &&
+  !clerkSecKey?.includes("REPLACE");
+
+if (isClerkConfigured && clerkPubKey) {
+  app.use(
+    clerkMiddleware((req) => ({
+      publishableKey: publishableKeyFromHost(
+        getClerkProxyHost(req) ?? "",
+        clerkPubKey,
+      ),
+    })),
+  );
+} else {
+  const clerkAuthBrand = Symbol.for("@clerk/express.auth");
+  logger.warn(
+    "⚠️ Clerk keys not configured in .env. Running in DEV mode with guest/mock auth fallback."
+  );
+  app.use((req, _res, next) => {
+    const userId = (req.headers["x-user-id"] as string) || "user_demo_seeker";
+    const authHandler = () => ({
+      tokenType: "session_token",
+      sessionClaims: {},
+      sessionId: "sess_demo_123",
+      userId,
+      actor: null,
+      orgId: null,
+      orgRole: null,
+      orgSlug: null,
+      orgPermissions: null,
+      factorVerificationAge: null,
+      getToken: () => Promise.resolve("mock_token"),
+      has: () => false,
+      debug: () => ({}),
+      isAuthenticated: true,
+    });
+    (authHandler as any)[clerkAuthBrand] = true;
+    (req as any).auth = authHandler;
+    next();
+  });
+}
 
 // Serve uploaded resume files (access-controlled in the route itself)
 app.use("/uploads/resumes", express.static(RESUME_UPLOAD_DIR));

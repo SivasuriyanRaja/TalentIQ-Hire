@@ -22,7 +22,16 @@ SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 const publicDomain = process.env.EXPO_PUBLIC_DOMAIN;
-if (publicDomain) setBaseUrl(`https://${publicDomain}`);
+if (publicDomain) {
+  const url = publicDomain.startsWith('http://') || publicDomain.startsWith('https://')
+    ? publicDomain
+    : (publicDomain.includes('localhost') || publicDomain.includes('127.0.0.1')
+        ? `http://${publicDomain}`
+        : `https://${publicDomain}`);
+  setBaseUrl(url);
+} else {
+  setBaseUrl('http://localhost:5000');
+}
 
 function RootLayoutNav() {
   const { getToken } = useAuth();
@@ -82,12 +91,19 @@ export default function RootLayout() {
 
   if (!fontsLoaded && !fontError) return null;
 
-  const publishableKey =
+  const rawKey =
     process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ??
     process.env.CLERK_PUBLISHABLE_KEY ??
     '';
-  if (!publishableKey) {
-    throw new Error('The secure sign-in service is not configured for this app.');
+  const publishableKey =
+    rawKey && !rawKey.includes('REPLACE_WITH_YOUR')
+      ? rawKey
+      : 'pk_test_dGFsZW50aXEuY2xlcmsuYWNjb3VudHMuZGV2JA';
+
+  if (!rawKey || rawKey.includes('REPLACE_WITH_YOUR')) {
+    console.warn(
+      '[TalentIQ] Clerk key is not configured. Add your CLERK_PUBLISHABLE_KEY to artifacts/talentiq-mobile/.env'
+    );
   }
 
   return (

@@ -17,18 +17,21 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-// Connect to MongoDB first, then start the server
-connectDB()
-  .then(() => {
-    app.listen(port, (err?: Error) => {
-      if (err) {
-        logger.error({ err }, "Error listening on port");
-        process.exit(1);
-      }
-      logger.info({ port }, "Server listening");
-    });
-  })
-  .catch((err) => {
-    logger.error({ err }, "Failed to connect to MongoDB");
+app.listen(port, (err?: Error) => {
+  if (err) {
+    logger.error({ err }, "Error listening on port");
     process.exit(1);
-  });
+  }
+  logger.info({ port }, `Server listening on port ${port}`);
+
+  connectDB()
+    .then(() => {
+      logger.info("MongoDB connected successfully");
+    })
+    .catch((err) => {
+      logger.error(
+        { err: err?.message || err },
+        "Failed to connect to MongoDB. (Ensure your IP is whitelisted in MongoDB Atlas Network Access: 0.0.0.0/0)"
+      );
+    });
+});

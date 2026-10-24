@@ -242,7 +242,7 @@ router.post(
 
     try {
       // Delete the old file if one exists
-      const existing = await UserProfile.findOne({ userId }).lean();
+      const existing = (await UserProfile.findOne({ userId }).lean()) as any;
       if (existing?.resumeFileKey) {
         const oldPath = path.join(RESUME_UPLOAD_DIR, existing.resumeFileKey);
         if (fs.existsSync(oldPath)) {
@@ -289,7 +289,7 @@ router.post(
 router.get("/sync/profile/resume", requireAuth, async (req, res) => {
   const { userId } = getAuth(req);
   try {
-    const profile = await UserProfile.findOne({ userId }).lean();
+    const profile = (await UserProfile.findOne({ userId }).lean()) as any;
     if (!profile?.resumeFileKey) {
       res.status(404).json({ message: "No resume file found." });
       return;
@@ -458,7 +458,8 @@ router.get("/sync/stages", requireAuth, async (req, res) => {
 /** PUT /api/sync/stages/:name — recruiter: upsert stage for a candidate */
 router.put("/sync/stages/:name", requireAuth, async (req, res) => {
   const { userId: recruiterId } = getAuth(req);
-  const candidateName = decodeURIComponent(req.params.name).slice(0, 120);
+  const rawName = Array.isArray(req.params.name) ? req.params.name[0] : req.params.name;
+  const candidateName = decodeURIComponent(rawName ?? "").slice(0, 120);
   const body = req.body as Record<string, unknown>;
 
   const VALID_STATUSES = new Set([

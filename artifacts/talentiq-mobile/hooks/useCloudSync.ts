@@ -13,9 +13,14 @@ import { useCallback } from 'react';
 import { useAuth } from '@clerk/expo';
 import type { Application, ApplicationStatus, CandidateProfile } from '@/data/talentiq';
 
-const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
-  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
-  : '';
+const rawDomain = process.env.EXPO_PUBLIC_DOMAIN || 'localhost:5000';
+const API_BASE = (
+  rawDomain.startsWith('http://') || rawDomain.startsWith('https://')
+    ? `${rawDomain.replace(/\/+$/, '')}/api`
+    : (rawDomain.includes('localhost') || rawDomain.includes('127.0.0.1')
+        ? `http://${rawDomain}/api`
+        : `https://${rawDomain}/api`)
+);
 
 type CloudProfilePayload = {
   name: string;

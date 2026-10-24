@@ -1,14 +1,15 @@
 @echo off
-title TalentIQ AI — Setup & Fix
+chcp 65001 >nul
+title TalentIQ AI - Setup and Fix
 color 0E
 
 echo.
-echo  ╔════════════════════════════════════════╗
-echo  ║     TalentIQ AI — Fix & Start          ║
-echo  ╚════════════════════════════════════════╝
+echo  ========================================
+echo       TalentIQ AI - Fix and Start
+echo  ========================================
 echo.
 
-REM ── Check Node.js ────────────────────────────────────────────────────
+REM -- Check Node.js ----------------------------------------------------
 where node >nul 2>&1
 if %errorlevel% neq 0 (
     echo  [ERROR] Node.js is not installed.
@@ -18,9 +19,9 @@ if %errorlevel% neq 0 (
 )
 
 for /f "tokens=*" %%v in ('node --version') do set NODE_VER=%%v
-echo  ✓  Node.js %NODE_VER% detected
+echo  * Node.js %NODE_VER% detected
 
-REM ── Check pnpm ───────────────────────────────────────────────────────
+REM -- Check pnpm -------------------------------------------------------
 where pnpm >nul 2>&1
 if %errorlevel% neq 0 (
     echo  Installing pnpm globally...
@@ -28,9 +29,9 @@ if %errorlevel% neq 0 (
 )
 
 for /f "tokens=*" %%v in ('pnpm --version') do set PNPM_VER=%%v
-echo  ✓  pnpm %PNPM_VER% detected
+echo  * pnpm %PNPM_VER% detected
 
-REM ── Install workspace dependencies ───────────────────────────────────
+REM -- Install workspace dependencies -----------------------------------
 echo.
 echo  Installing all workspace dependencies (this may take a minute)...
 cd /d "%~dp0"
@@ -43,29 +44,34 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-echo  ✓  Dependencies installed
+echo  * Dependencies installed
 echo.
 
-REM ── Check .env ────────────────────────────────────────────────────────
+REM -- Check API .env ---------------------------------------------------
 if not exist "artifacts\api-server\.env" (
     echo  [WARN] No .env found for API server.
     echo  Creating .env from template...
     copy "artifacts\api-server\.env.example" "artifacts\api-server\.env" >nul 2>&1
     echo.
-    echo  !! Please edit artifacts\api-server\.env with your Clerk + OpenAI keys !!
+    echo  Please edit artifacts\api-server\.env with your Clerk and OpenAI keys.
     echo.
-    notepad "artifacts\api-server\.env"
 )
 
-REM ── Start services ────────────────────────────────────────────────────
+REM -- Check Mobile .env ------------------------------------------------
+if not exist "artifacts\talentiq-mobile\.env" (
+    echo  Creating artifacts\talentiq-mobile\.env...
+    copy "artifacts\talentiq-mobile\.env.example" "artifacts\talentiq-mobile\.env" >nul 2>&1
+)
+
+REM -- Start services ----------------------------------------------------
 echo  Starting services...
 echo.
-start "TalentIQ — API Server" cmd /k "cd /d %~dp0artifacts\api-server && pnpm dev"
+start "TalentIQ - API Server" cmd /k "cd /d %~dp0artifacts\api-server && pnpm dev"
 timeout /t 4 /nobreak >nul
-start "TalentIQ — Mobile App" cmd /k "cd /d %~dp0artifacts\talentiq-mobile && pnpm dev"
+start "TalentIQ - Mobile App" cmd /k "cd /d %~dp0artifacts\talentiq-mobile && pnpm dev"
 
 echo.
-echo  ✓  All done! Both windows are starting.
+echo  * All done! Both windows are starting.
 echo.
 echo  API:    http://localhost:5000/api/health
 echo  Mobile: Scan QR code in the Expo window with Expo Go
