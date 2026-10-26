@@ -17,22 +17,52 @@ import {
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { setAuthTokenGetter, setBaseUrl } from '@workspace/api-client-react';
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 import { useTalentIQ } from '@/state/TalentIQContext';
 
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
-const publicDomain = process.env.EXPO_PUBLIC_DOMAIN;
-if (publicDomain) {
-  const url = publicDomain.startsWith('http://') || publicDomain.startsWith('https://')
-    ? publicDomain
-    : (publicDomain.includes('localhost') || publicDomain.includes('127.0.0.1')
-        ? `http://${publicDomain}`
-        : `https://${publicDomain}`);
-  setBaseUrl(url);
-} else {
-  setBaseUrl('http://localhost:5000');
+
+function resolveApiBaseUrl(): string {
+  const publicDomain = process.env.EXPO_PUBLIC_DOMAIN;
+
+  // 1. If an explicit remote or IP URL is configured (e.g. ngrok, production domain, or explicit IP)
+  if (
+    publicDomain &&
+    !publicDomain.includes('localhost') &&
+    !publicDomain.includes('127.0.0.1')
+  ) {
+    return publicDomain.startsWith('http://') || publicDomain.startsWith('https://')
+      ? publicDomain
+      : `https://${publicDomain}`;
+  }
+
+  // 2. On Web: localhost:5000 works directly in browser
+  if (Platform.OS === 'web') {
+    return 'http://localhost:5000';
+  }
+
+  // 3. On Mobile (Expo Go on physical device):
+  // Dynamically extract packager host IP from Constants.expoConfig?.hostUri (e.g. "192.168.29.120:8081")
+  const hostUri = Constants.expoConfig?.hostUri;
+  const packagerIp = hostUri ? hostUri.split(':')[0] : null;
+
+  if (packagerIp && packagerIp !== 'localhost' && packagerIp !== '127.0.0.1') {
+    return `http://${packagerIp}:5000`;
+  }
+
+  // 4. Android Emulator loopback
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:5000';
+  }
+
+  return 'http://localhost:5000';
 }
+
+const apiBaseUrl = resolveApiBaseUrl();
+setBaseUrl(apiBaseUrl);
 
 function RootLayoutNav() {
   const { getToken } = useAuth();

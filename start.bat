@@ -30,12 +30,24 @@ if not exist "artifacts\talentiq-mobile\.env" (
     copy "artifacts\talentiq-mobile\.env.example" "artifacts\talentiq-mobile\.env" >nul 2>&1
 )
 
+REM -- Detect active Wi-Fi IP to ensure Expo binds to physical Wi-Fi --
+for /f "tokens=*" %%i in ('powershell -NoProfile -Command "(Get-NetIPAddress -InterfaceAlias 'Wi-Fi' -AddressFamily IPv4 -ErrorAction SilentlyContinue).IPAddress"') do set "WIFI_IP=%%i"
+
+if defined WIFI_IP (
+    echo  [NETWORK] Detected Wi-Fi IP: %WIFI_IP%
+    set "REACT_NATIVE_PACKAGER_HOSTNAME=%WIFI_IP%"
+)
+
 echo  [1/2] Starting API server on port 5000...
 start "TalentIQ - API Server" cmd /k "cd /d %~dp0artifacts\api-server && echo Starting API server... && pnpm dev"
 
 echo  [2/2] Starting Expo mobile app...
 timeout /t 3 /nobreak >nul
-start "TalentIQ - Mobile App" cmd /k "cd /d %~dp0artifacts\talentiq-mobile && echo Starting Expo... && pnpm dev"
+if defined WIFI_IP (
+    start "TalentIQ - Mobile App" cmd /k "cd /d %~dp0artifacts\talentiq-mobile && set REACT_NATIVE_PACKAGER_HOSTNAME=%WIFI_IP% && echo Starting Expo on %WIFI_IP%... && pnpm dev"
+) else (
+    start "TalentIQ - Mobile App" cmd /k "cd /d %~dp0artifacts\talentiq-mobile && echo Starting Expo... && pnpm dev"
+)
 
 echo.
 echo  * Both services are starting in separate windows.
@@ -44,9 +56,12 @@ echo  Mobile app:  Press 'w' for browser (web)
 echo               Press 'a' for Android emulator
 echo               Scan QR code with Expo Go
 echo.
-echo  NOTE: If your phone is on Cellular/LTE (not Wi-Fi):
-echo        Press 's' in the Expo window to switch to TUNNEL mode!
-echo        (Or run .\start-tunnel.bat)
+echo  ==============================================================
+echo   IF EXPO TIMES OUT ON YOUR PHONE:
+echo   1. Ensure phone is connected to the SAME Wi-Fi network (%WIFI_IP%)
+echo   2. If on Cellular/LTE or hotspot, run: .\start-tunnel.bat
+echo      (Or press 's' in the Expo window to switch to TUNNEL mode)
+echo  ==============================================================
 echo.
 echo  API Server:  http://localhost:5000/api/health
 echo.
