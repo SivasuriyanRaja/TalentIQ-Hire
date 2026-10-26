@@ -1,6 +1,6 @@
 import React from 'react';
 import { Feather } from '@expo/vector-icons';
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
 import { Platform, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import Animated, {
@@ -10,6 +10,7 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 import { useColors } from '@/hooks/useColors';
+import { useTalentIQ } from '@/state/TalentIQContext';
 
 // ── Animated tab icon ─────────────────────────────────────────────────────────
 
@@ -92,9 +93,15 @@ function hexToRgb(hex: string): string {
 
 export default function TabLayout() {
   const colors = useColors();
+  const { isUserSignedIn, authMode, isLoaded } = useTalentIQ();
   const isDark = useColorScheme() === 'dark';
   const isIOS = Platform.OS === 'ios';
   const isWeb = Platform.OS === 'web';
+
+  // Secondary protection layer: If logged out, cannot stay in tabs
+  if (isLoaded && !isUserSignedIn && authMode === 'unauthenticated') {
+    return <Redirect href="/" />;
+  }
 
   const tabs: Array<{
     name: string;

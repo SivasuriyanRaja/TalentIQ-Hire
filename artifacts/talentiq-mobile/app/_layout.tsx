@@ -14,9 +14,10 @@ import {
   Inter_700Bold,
   useFonts,
 } from '@expo-google-fonts/inter';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { setAuthTokenGetter, setBaseUrl } from '@workspace/api-client-react';
+import { useTalentIQ } from '@/state/TalentIQContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -35,10 +36,40 @@ if (publicDomain) {
 
 function RootLayoutNav() {
   const { getToken } = useAuth();
+  const { isUserSignedIn, authMode, isLoaded: contextLoaded } = useTalentIQ();
+  const segments = useSegments();
+  const router = useRouter();
 
   useEffect(() => {
     setAuthTokenGetter(() => getToken());
   }, [getToken]);
+
+  useEffect(() => {
+    if (!contextLoaded) return;
+
+    const rootSegment = segments[0] as string | undefined;
+    const inAuthGroup = rootSegment === '(auth)';
+    const inProtected =
+      rootSegment === '(tabs)' ||
+      rootSegment === 'hr-dashboard' ||
+      rootSegment === 'create-job';
+
+    // If completely unauthenticated (neither signed in nor guest), CANNOT be in protected routes
+    if (!isUserSignedIn && authMode === 'unauthenticated' && inProtected) {
+      if (router.canDismiss()) {
+        router.dismissAll();
+      }
+      router.replace('/');
+    }
+
+    // If signed in and on (auth) modals, dismiss them and send to tabs
+    if (isUserSignedIn && inAuthGroup) {
+      if (router.canDismiss()) {
+        router.dismissAll();
+      }
+      router.replace('/(tabs)');
+    }
+  }, [isUserSignedIn, authMode, contextLoaded, segments, router]);
 
   return (
     <Stack screenOptions={{ headerShown: false, headerBackTitle: 'Back' }}>

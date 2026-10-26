@@ -1,14 +1,13 @@
 /**
  * TalentIQContext.tsx
  *
- * Global state for the TalentIQ app.  Persists locally via AsyncStorage for
- * offline support and syncs bi-directionally with the cloud API when the user
- * is signed in, so data is available on any device.
- *
- * Sync strategy:
- *  1. On mount: load local state from AsyncStorage immediately (instant load)
- *  2. After auth is ready: fetch cloud data and merge (cloud wins on conflict)
- *  3. On every write: update local state → persist to AsyncStorage → push to cloud
+ * Global state & Unified Authentication Pipeline for TalentIQ.
+ * Supports:
+ *  - Real Clerk Authentication (when configured)
+ *  - Instant One-Tap Demo Authentication (Candidate & Recruiter)
+ *  - Explicit Guest Mode
+ *  - Robust State Cleanup & Stack Reset on Sign Out
+ *  - Local persistence via AsyncStorage & Bi-directional Cloud Sync
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -21,7 +20,8 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { useAuth } from '@clerk/expo';
+import { useAuth, useClerk } from '@clerk/expo';
+import { useRouter } from 'expo-router';
 import {
   Application,
   ApplicationStatus,
@@ -34,6 +34,60 @@ import {
 } from '@/data/talentiq';
 import { useCloudSync } from '@/hooks/useCloudSync';
 
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  isDemo?: boolean;
+}
+
+export type AuthMode = 'authenticated' | 'guest' | 'unauthenticated';
+
+export const candidateDemoProfile: CandidateProfile = {
+  name: 'Jordan Lee',
+  headline: 'Senior Product Designer & Design Technologist',
+  location: 'San Francisco, CA',
+  yearsExperience: 6,
+  skills: [
+    'Figma',
+    'Design Systems',
+    'React',
+    'TypeScript',
+    'User Research',
+    'Prototyping',
+    'UI/UX',
+  ],
+  education: 'B.S. in Human-Computer Interaction, Stanford University',
+  resumeLink: 'https://jordanlee.design',
+  resumeFileName: 'jordan_lee_design_resume_2026.pdf',
+  resumeFileSizeBytes: 1420500,
+  extractedSkills: [
+    'Figma',
+    'Design Systems',
+    'React',
+    'TypeScript',
+    'User Research',
+    'Prototyping',
+  ],
+};
+
+export const recruiterDemoProfile: CandidateProfile = {
+  name: 'Sam Rivera',
+  headline: 'Lead Technical Recruiter · TalentIQ Hiring Team',
+  location: 'New York, NY',
+  yearsExperience: 8,
+  skills: [
+    'Technical Recruiting',
+    'Talent Sourcing',
+    'Pipeline Management',
+    'Interviewing',
+    'Executive Hiring',
+  ],
+  education: 'B.A. in Organizational Psychology, NYU',
+  resumeLink: '',
+};
+
 interface TalentIQState {
   role: UserRole;
   profile: CandidateProfile;
@@ -44,12 +98,15 @@ interface TalentIQState {
   candidateStatuses: Record<string, ApplicationStatus>;
 }
 
-interface TalentIQContextValue extends TalentIQState {
+export interface TalentIQContextValue extends TalentIQState {
   isLoaded: boolean;
   isSyncing: boolean;
   storageError: string;
   syncError: string;
   jobs: Job[];
+  authUser: AuthUser | null;
+  authMode: AuthMode;
+  isUserSignedIn: boolean;
   setRole: (role: UserRole) => void;
   updateProfile: (profile: CandidateProfile) => void;
   applyToJob: (jobId: string, jobTitle?: string, company?: string, matchScore?: number) => void;
@@ -57,13 +114,14 @@ interface TalentIQContextValue extends TalentIQState {
   addJob: (job: Job) => void;
   completeAssessment: (attempt: AssessmentAttempt) => void;
   setCandidateStatus: (name: string, status: ApplicationStatus) => void;
-  /** Upload a resume file and merge extracted skills into the profile */
   uploadResume: (fileUri: string, fileName: string, mimeType: string) => Promise<void>;
-  /** Manually trigger a full cloud sync */
   syncNow: () => Promise<void>;
+  loginDemo: (role: 'candidate' | 'recruiter') => Promise<void>;
+  loginGuest: (role?: UserRole) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
-const STORAGE_PREFIX = 'talentiq.mobile.state.v2';
+const STORAGE_PREFIX = 'talentiq.mobile.state.v3';
 
 const defaultState: TalentIQState = {
   role: 'candidate',
@@ -86,8 +144,25 @@ export function TalentIQProvider({
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
   const { userId, isSignedIn, isLoaded: authLoaded } = useAuth();
-  const storageKey = `${STORAGE_PREFIX}:${userId ?? 'guest'}`;
+  const { signOut: clerkSignOut } = useClerk();
+
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [authMode, setAuthMode] = useState<AuthMode>('unauthenticated');
+  const [authHydrated, setAuthHydrated] = useState(false);
+
+  // Synchronously compute isUserSignedIn
+  const isUserSignedIn = Boolean(
+    (isSignedIn && authMode !== 'unauthenticated') || authUser,
+  );
+
+  const activeUserId = authUser?.id ?? userId;
+  const storageKey = activeUserId
+    ? `${STORAGE_PREFIX}:${activeUserId}`
+    : authMode === 'guest'
+      ? `${STORAGE_PREFIX}:guest`
+      : `${STORAGE_PREFIX}:anonymous`;
 
   const [state, setState] = useState<TalentIQState>(defaultState);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -97,28 +172,88 @@ export function TalentIQProvider({
   const [syncError, setSyncError] = useState('');
   const cloudSync = useCloudSync();
 
-  // Track whether we've done the initial cloud sync for this session
   const hasSyncedRef = useRef(false);
 
-  // ── Local persistence ─────────────────────────────────────────────────────
-
-  // Load from AsyncStorage when the user (or auth key) changes
+  // ── Session Hydration on Startup ──────────────────────────────────────────
   useEffect(() => {
     let active = true;
+    Promise.all([
+      AsyncStorage.getItem('talentiq.auth.session'),
+      AsyncStorage.getItem('talentiq.auth.mode'),
+    ])
+      .then(([savedSession, savedMode]) => {
+        if (!active) return;
+        if (savedSession) {
+          try {
+            const user = JSON.parse(savedSession) as AuthUser;
+            setAuthUser(user);
+            setAuthMode('authenticated');
+            return;
+          } catch {}
+        }
+        if (savedMode === 'guest') {
+          setAuthMode('guest');
+        } else if (isSignedIn) {
+          setAuthMode('authenticated');
+        } else {
+          setAuthMode('unauthenticated');
+        }
+      })
+      .catch(() => {
+        if (active) setAuthMode('unauthenticated');
+      })
+      .finally(() => {
+        if (active) setAuthHydrated(true);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isSignedIn]);
+
+  // Sync Clerk sign-in status
+  useEffect(() => {
+    if (isSignedIn && authMode === 'unauthenticated') {
+      setAuthMode('authenticated');
+    }
+  }, [isSignedIn, authMode]);
+
+  // ── Local persistence ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!authHydrated) return;
+    let active = true;
     setIsLoaded(false);
-    setState(defaultState);
     setStorageError('');
     hasSyncedRef.current = false;
+
     AsyncStorage.getItem(storageKey)
       .then((value) => {
         if (value && active) {
           try {
-            setState({ ...defaultState, ...JSON.parse(value) });
+            const parsed = JSON.parse(value);
+            setState({
+              ...defaultState,
+              ...parsed,
+              role: authUser?.role ?? parsed.role ?? 'candidate',
+            });
           } catch {
             setState(defaultState);
             setStorageError(
               'Saved profile data could not be read. Your sample profile has been restored.',
             );
+          }
+        } else if (active) {
+          if (authUser?.isDemo) {
+            setState({
+              ...defaultState,
+              role: authUser.role,
+              profile:
+                authUser.role === 'candidate'
+                  ? candidateDemoProfile
+                  : recruiterDemoProfile,
+            });
+          } else {
+            setState(defaultState);
           }
         }
       })
@@ -132,28 +267,27 @@ export function TalentIQProvider({
           setIsLoaded(true);
         }
       });
+
     return () => {
       active = false;
     };
-  }, [storageKey]);
+  }, [storageKey, authHydrated, authUser]);
 
-  // Persist to AsyncStorage on every state change
+  // Persist to AsyncStorage on state change
   useEffect(() => {
-    if (isLoaded && hydratedKey === storageKey) {
+    if (isLoaded && hydratedKey === storageKey && authMode !== 'unauthenticated') {
       AsyncStorage.setItem(storageKey, JSON.stringify(state)).catch(() => {
         setStorageError('Could not save your latest changes on this device.');
       });
     }
-  }, [isLoaded, hydratedKey, storageKey, state]);
+  }, [isLoaded, hydratedKey, storageKey, state, authMode]);
 
   // ── Cloud sync ────────────────────────────────────────────────────────────
-
   const syncNow = useCallback(async () => {
     if (!isSignedIn || !authLoaded) return;
     setIsSyncing(true);
     setSyncError('');
     try {
-      // Fetch all cloud data in parallel
       const [cloudProfile, cloudApps, cloudSavedIds, cloudStages] =
         await Promise.all([
           cloudSync.fetchCloudProfile(),
@@ -165,7 +299,6 @@ export function TalentIQProvider({
       setState((current) => {
         const merged: TalentIQState = { ...current };
 
-        // Profile: cloud wins on fields that have cloud data
         if (cloudProfile) {
           merged.profile = {
             ...current.profile,
@@ -173,7 +306,6 @@ export function TalentIQProvider({
           };
         }
 
-        // Applications: merge by jobId — cloud status wins
         if (cloudApps.length > 0) {
           const localMap = new Map(
             current.applications.map((a) => [a.jobId, a]),
@@ -187,13 +319,11 @@ export function TalentIQProvider({
           merged.applications = Array.from(localMap.values());
         }
 
-        // Saved jobs: union of local + cloud
         if (cloudSavedIds.length > 0) {
           const combined = new Set([...current.savedJobIds, ...cloudSavedIds]);
           merged.savedJobIds = Array.from(combined);
         }
 
-        // Recruiter stages: cloud wins
         if (Object.keys(cloudStages).length > 0) {
           merged.candidateStatuses = {
             ...current.candidateStatuses,
@@ -210,7 +340,6 @@ export function TalentIQProvider({
     }
   }, [isSignedIn, authLoaded, cloudSync]);
 
-  // Trigger cloud sync once after auth loads and local state is ready
   useEffect(() => {
     if (isLoaded && authLoaded && isSignedIn && !hasSyncedRef.current) {
       hasSyncedRef.current = true;
@@ -218,7 +347,101 @@ export function TalentIQProvider({
     }
   }, [isLoaded, authLoaded, isSignedIn, syncNow]);
 
-  // ── Actions ───────────────────────────────────────────────────────────────
+  // ── Authentication Actions ────────────────────────────────────────────────
+
+  const loginDemo = useCallback(
+    async (demoRole: 'candidate' | 'recruiter') => {
+      const demoUser: AuthUser = {
+        id: `demo_${demoRole}`,
+        email: `${demoRole}@talentiq.ai`,
+        name: demoRole === 'candidate' ? 'Jordan Lee' : 'Sam Rivera',
+        role: demoRole,
+        isDemo: true,
+      };
+
+      setAuthUser(demoUser);
+      setAuthMode('authenticated');
+      setState({
+        ...defaultState,
+        role: demoRole,
+        profile:
+          demoRole === 'candidate'
+            ? candidateDemoProfile
+            : recruiterDemoProfile,
+      });
+
+      try {
+        await AsyncStorage.setItem(
+          'talentiq.auth.session',
+          JSON.stringify(demoUser),
+        );
+        await AsyncStorage.setItem('talentiq.auth.mode', 'authenticated');
+      } catch {}
+
+      try {
+        if (router.canDismiss()) {
+          router.dismissAll();
+        }
+      } catch {}
+      router.replace('/(tabs)');
+    },
+    [router],
+  );
+
+  const loginGuest = useCallback(
+    async (guestRole: UserRole = 'candidate') => {
+      setAuthUser(null);
+      setAuthMode('guest');
+      setState((current) => ({
+        ...current,
+        role: guestRole,
+      }));
+
+      try {
+        await AsyncStorage.removeItem('talentiq.auth.session');
+        await AsyncStorage.setItem('talentiq.auth.mode', 'guest');
+      } catch {}
+
+      try {
+        if (router.canDismiss()) {
+          router.dismissAll();
+        }
+      } catch {}
+      router.replace('/(tabs)');
+    },
+    [router],
+  );
+
+  const logout = useCallback(async () => {
+    setIsSyncing(false);
+    hasSyncedRef.current = false;
+    setAuthUser(null);
+    setAuthMode('unauthenticated');
+    setState(defaultState);
+
+    try {
+      await AsyncStorage.multiRemove([
+        'talentiq.auth.session',
+        'talentiq.auth.mode',
+      ]);
+    } catch {}
+
+    try {
+      if (isSignedIn) {
+        await clerkSignOut();
+      }
+    } catch {}
+
+    try {
+      if (router.canDismiss()) {
+        router.dismissAll();
+      }
+    } catch {}
+
+    router.replace('/');
+  }, [isSignedIn, clerkSignOut, router]);
+
+  // ── Core Workspace Actions ────────────────────────────────────────────────
 
   const setRole = useCallback((role: UserRole) => {
     setState((current) => ({ ...current, role }));
@@ -227,10 +450,11 @@ export function TalentIQProvider({
   const updateProfile = useCallback(
     (profile: CandidateProfile) => {
       setState((current) => ({ ...current, profile }));
-      // Push to cloud asynchronously
-      void cloudSync.pushProfile(profile);
+      if (isSignedIn) {
+        void cloudSync.pushProfile(profile);
+      }
     },
-    [cloudSync],
+    [cloudSync, isSignedIn],
   );
 
   const applyToJob = useCallback(
@@ -251,21 +475,23 @@ export function TalentIQProvider({
           appliedAt: new Date().toISOString(),
           matchScore,
         };
-        // Push to cloud
-        void cloudSync.pushApplication(newApp, jobTitle, company);
+        if (isSignedIn) {
+          void cloudSync.pushApplication(newApp, jobTitle, company);
+        }
         return {
           ...current,
           applications: [newApp, ...current.applications],
         };
       });
     },
-    [cloudSync],
+    [cloudSync, isSignedIn],
   );
 
   const toggleSavedJob = useCallback(
     (jobId: string) => {
-      // Push toggle to cloud
-      void cloudSync.toggleSavedJobCloud(jobId);
+      if (isSignedIn) {
+        void cloudSync.toggleSavedJobCloud(jobId);
+      }
       setState((current) => ({
         ...current,
         savedJobIds: current.savedJobIds.includes(jobId)
@@ -273,7 +499,7 @@ export function TalentIQProvider({
           : [jobId, ...current.savedJobIds],
       }));
     },
-    [cloudSync],
+    [cloudSync, isSignedIn],
   );
 
   const addJob = useCallback((job: Job) => {
@@ -292,28 +518,27 @@ export function TalentIQProvider({
 
   const setCandidateStatus = useCallback(
     (name: string, status: ApplicationStatus) => {
-      // Push to cloud
-      void cloudSync.pushStage(name, status);
+      if (isSignedIn) {
+        void cloudSync.pushStage(name, status);
+      }
       setState((current) => ({
         ...current,
         candidateStatuses: { ...current.candidateStatuses, [name]: status },
       }));
     },
-    [cloudSync],
+    [cloudSync, isSignedIn],
   );
 
   const uploadResume = useCallback(
     async (fileUri: string, fileName: string, mimeType: string) => {
       const result = await cloudSync.uploadResume(fileUri, fileName, mimeType);
       if (!result) return;
-      // Merge extracted skills + resume metadata into profile
       setState((current) => {
         const updatedProfile: CandidateProfile = {
           ...current.profile,
           resumeFileName: result.resumeFileName,
           resumeFileSizeBytes: result.resumeFileSizeBytes,
           extractedSkills: result.extractedSkills,
-          // Auto-merge extracted skills into manual skills (deduplicated)
           skills: Array.from(
             new Set([...current.profile.skills, ...result.extractedSkills]),
           ).slice(0, 20),
@@ -327,11 +552,14 @@ export function TalentIQProvider({
   const value = useMemo(
     () => ({
       ...state,
-      isLoaded,
+      isLoaded: isLoaded && authHydrated,
       isSyncing,
       storageError,
       syncError,
       jobs: [...state.customJobs, ...sampleJobs],
+      authUser,
+      authMode,
+      isUserSignedIn,
       setRole,
       updateProfile,
       applyToJob,
@@ -341,13 +569,20 @@ export function TalentIQProvider({
       setCandidateStatus,
       uploadResume,
       syncNow,
+      loginDemo,
+      loginGuest,
+      logout,
     }),
     [
       state,
       isLoaded,
+      authHydrated,
       isSyncing,
       storageError,
       syncError,
+      authUser,
+      authMode,
+      isUserSignedIn,
       setRole,
       updateProfile,
       applyToJob,
@@ -357,6 +592,9 @@ export function TalentIQProvider({
       setCandidateStatus,
       uploadResume,
       syncNow,
+      loginDemo,
+      loginGuest,
+      logout,
     ],
   );
 

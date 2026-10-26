@@ -10,10 +10,14 @@ import { UserRole } from '@/data/talentiq';
 export default function RoleSelectScreen() {
   const colors = useColors();
   const router = useRouter();
-  const { role, setRole } = useTalentIQ();
+  const { role, setRole, loginGuest, isUserSignedIn } = useTalentIQ();
   const choose = (nextRole: UserRole) => {
-    setRole(nextRole);
-    router.replace('/(tabs)');
+    if (isUserSignedIn) {
+      setRole(nextRole);
+      router.replace('/(tabs)');
+    } else {
+      void loginGuest(nextRole);
+    }
   };
 
   return (

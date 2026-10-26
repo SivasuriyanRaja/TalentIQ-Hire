@@ -49,6 +49,9 @@ export default function ProfileScreen() {
     isSyncing,
     uploadResume,
     syncNow,
+    authUser,
+    isUserSignedIn,
+    logout,
   } = useTalentIQ();
 
   const [name, setName] = useState(profile.name);
@@ -144,16 +147,11 @@ export default function ProfileScreen() {
     router.replace('/(tabs)');
   };
 
-  const logout = async () => {
-    try {
-      await signOut();
-      router.replace('/');
-    } catch {
-      Alert.alert('Could not sign out', 'Please check your connection and try again.');
-    }
-  };
-
-  const displayName = user?.firstName || profile.name;
+  const displayName = authUser?.name || user?.firstName || profile.name;
+  const displayEmail =
+    authUser?.email ??
+    user?.primaryEmailAddress?.emailAddress ??
+    (isUserSignedIn ? 'Signed in account' : 'Preview profile');
   const hasResumeFile = Boolean(profile.resumeFileName);
   const hasExtractedSkills =
     profile.extractedSkills && profile.extractedSkills.length > 0;
@@ -190,7 +188,7 @@ export default function ProfileScreen() {
             {displayName}
           </Text>
           <Text style={[styles.identityMeta, { color: colors.mutedForeground }]}>
-            {user?.primaryEmailAddress?.emailAddress ?? 'Preview profile'}
+            {displayEmail}
           </Text>
         </View>
         <View style={[styles.roleTag, { backgroundColor: colors.accent }]}>
@@ -447,7 +445,7 @@ export default function ProfileScreen() {
         </Pressable>
       ) : null}
 
-      {isSignedIn ? (
+      {isUserSignedIn ? (
         <Pressable onPress={logout} style={styles.signOut}>
           <Feather name="log-out" size={16} color={colors.destructive} />
           <Text style={[styles.signOutText, { color: colors.destructive }]}>

@@ -17,8 +17,7 @@ export default function AssessmentScreen() {
   const colors = useColors();
   const router = useRouter();
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
-  const { isSignedIn } = useAuth();
-  const { jobs, completeAssessment } = useTalentIQ();
+  const { jobs, completeAssessment, isUserSignedIn } = useTalentIQ();
   const mutation = useGenerateTalentAssessment();
   const [quiz, setQuiz] = useState<AssessmentGenerationResponse | null>(null);
   const [answers, setAnswers] = useState<Record<number, string>>({});
@@ -41,7 +40,7 @@ export default function AssessmentScreen() {
   }, []);
 
   const generate = async () => {
-    if (!isSignedIn) {
+    if (!isUserSignedIn) {
       router.push('/(auth)/sign-in');
       return;
     }

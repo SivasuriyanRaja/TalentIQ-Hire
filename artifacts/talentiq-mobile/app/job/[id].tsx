@@ -14,8 +14,7 @@ export default function JobDetailScreen() {
   const colors = useColors();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { isSignedIn } = useAuth();
-  const { jobs, role, profile, applications, savedJobIds, toggleSavedJob, applyToJob } = useTalentIQ();
+  const { jobs, role, profile, applications, savedJobIds, toggleSavedJob, applyToJob, isUserSignedIn } = useTalentIQ();
   const analysis = useAnalyzeTalentMatch();
   const [notice, setNotice] = React.useState('');
   const job = jobs.find((item) => item.id === id);
@@ -37,7 +36,7 @@ export default function JobDetailScreen() {
   const previewScore = estimateMatch(job, profile.skills);
 
   const runAnalysis = async () => {
-    if (!isSignedIn) {
+    if (!isUserSignedIn) {
       router.push('/(auth)/sign-in');
       return;
     }
@@ -60,7 +59,7 @@ export default function JobDetailScreen() {
   };
 
   const startAssessment = () => {
-    if (!isSignedIn) {
+    if (!isUserSignedIn) {
       router.push('/(auth)/sign-in');
       return;
     }

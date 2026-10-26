@@ -1,17 +1,31 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Feather } from '@expo/vector-icons';
-import { Redirect, useRouter } from 'expo-router';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useAuth } from '@clerk/expo';
+import { Redirect, useFocusEffect, useRouter } from 'expo-router';
+import { BackHandler, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useColors } from '@/hooks/useColors';
 import { Screen, Wordmark } from '@/components/ui';
+import { useTalentIQ } from '@/state/TalentIQContext';
 
 export default function WelcomeScreen() {
   const colors = useColors();
-  const { isSignedIn, isLoaded } = useAuth();
+  const { isUserSignedIn, isLoaded, authMode } = useTalentIQ();
   const router = useRouter();
 
-  if (isLoaded && isSignedIn) return <Redirect href="/(tabs)" />;
+  // Prevent hardware back button from popping back into signed-in routes or previous screens
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        BackHandler.exitApp();
+        return true;
+      };
+      const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => sub.remove();
+    }, []),
+  );
+
+  if (isLoaded && isUserSignedIn && authMode === 'authenticated') {
+    return <Redirect href="/(tabs)" />;
+  }
 
   return (
     <Screen contentStyle={styles.page}>

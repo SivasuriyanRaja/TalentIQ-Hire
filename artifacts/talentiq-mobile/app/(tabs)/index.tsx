@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Feather } from '@expo/vector-icons';
 import { useUser } from '@clerk/expo';
-import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   Avatar,
   Card,
@@ -29,8 +29,23 @@ export default function HomeScreen() {
     savedJobIds,
     toggleSavedJob,
     isLoaded,
+    authUser,
   } = useTalentIQ();
-  const displayName = user?.firstName || profile.name.split(' ')[0];
+
+  // On the root home tab, pressing Android hardware back exits the app
+  // rather than popping back into the login/welcome screens
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        BackHandler.exitApp();
+        return true;
+      };
+      const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => sub.remove();
+    }, []),
+  );
+
+  const displayName = authUser?.name?.split(' ')[0] || user?.firstName || profile.name.split(' ')[0];
 
   if (role === 'recruiter') {
     return (

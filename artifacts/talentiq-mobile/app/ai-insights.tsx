@@ -155,8 +155,7 @@ export default function AIInsightsScreen() {
   const colors = useColors();
   const router = useRouter();
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
-  const { isSignedIn } = useAuth();
-  const { jobs, profile } = useTalentIQ();
+  const { jobs, profile, isUserSignedIn } = useTalentIQ();
   const analysis = useAnalyzeTalentMatch();
   const [ran, setRan] = useState(false);
   const fadeIn = useRef(new Animated.Value(0)).current;
@@ -165,12 +164,12 @@ export default function AIInsightsScreen() {
 
   // Auto-run on mount if signed in and we have a job
   useEffect(() => {
-    if (!ran && job && isSignedIn && profile.skills.length > 0) {
+    if (!ran && job && isUserSignedIn && profile.skills.length > 0) {
       setRan(true);
       void runAnalysis();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [job, isSignedIn]);
+  }, [job, isUserSignedIn]);
 
   // Fade in result when ready
   useEffect(() => {
@@ -184,7 +183,7 @@ export default function AIInsightsScreen() {
   }, [analysis.data, fadeIn]);
 
   const runAnalysis = async () => {
-    if (!isSignedIn) {
+    if (!isUserSignedIn) {
       router.push('/(auth)/sign-in');
       return;
     }
@@ -286,7 +285,7 @@ export default function AIInsightsScreen() {
             next.
           </Text>
           <PrimaryButton
-            label={isSignedIn ? 'Run AI analysis' : 'Sign in to analyse'}
+            label={isUserSignedIn ? 'Run AI analysis' : 'Sign in to analyse'}
             icon="zap"
             onPress={runAnalysis}
           />
