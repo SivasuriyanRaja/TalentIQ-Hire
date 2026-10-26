@@ -57,24 +57,30 @@ function RootLayoutNav() {
   );
 }
 
-function AppProviders() {
-  return (
-    <ClerkLoaded>
-      <SafeAreaProvider>
-        <TalentIQProvider>
-          <ErrorBoundary>
-            <QueryClientProvider client={queryClient}>
-              <GestureHandlerRootView style={{ flex: 1 }}>
-                <KeyboardProvider>
-                  <RootLayoutNav />
-                </KeyboardProvider>
-              </GestureHandlerRootView>
-            </QueryClientProvider>
-          </ErrorBoundary>
-        </TalentIQProvider>
-      </SafeAreaProvider>
-    </ClerkLoaded>
+function AppProviders({ isClerkConfigured }: { isClerkConfigured: boolean }) {
+  const content = (
+    <SafeAreaProvider>
+      <TalentIQProvider>
+        <ErrorBoundary>
+          <QueryClientProvider client={queryClient}>
+            <GestureHandlerRootView style={{ flex: 1 }}>
+              <KeyboardProvider>
+                <RootLayoutNav />
+              </KeyboardProvider>
+            </GestureHandlerRootView>
+          </QueryClientProvider>
+        </ErrorBoundary>
+      </TalentIQProvider>
+    </SafeAreaProvider>
   );
+
+  // If a real Clerk key is present, wait for ClerkLoaded.
+  // Otherwise, render immediately so the app can be explored in dev/guest mode.
+  if (isClerkConfigured) {
+    return <ClerkLoaded>{content}</ClerkLoaded>;
+  }
+
+  return content;
 }
 
 export default function RootLayout() {
@@ -95,14 +101,18 @@ export default function RootLayout() {
     process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ??
     process.env.CLERK_PUBLISHABLE_KEY ??
     '';
-  const publishableKey =
-    rawKey && !rawKey.includes('REPLACE_WITH_YOUR')
-      ? rawKey
-      : 'pk_test_dGFsZW50aXEuY2xlcmsuYWNjb3VudHMuZGV2JA';
+  const isClerkConfigured =
+    Boolean(rawKey) &&
+    !rawKey.includes('REPLACE_WITH_YOUR') &&
+    !rawKey.includes('dGFsZW50aXEuY2xlcmsuYWNjb3VudHMuZGV2JA');
 
-  if (!rawKey || rawKey.includes('REPLACE_WITH_YOUR')) {
+  const publishableKey = isClerkConfigured
+    ? rawKey
+    : 'pk_test_dGFsZW50aXEuY2xlcmsuYWNjb3VudHMuZGV2JA';
+
+  if (!isClerkConfigured) {
     console.warn(
-      '[TalentIQ] Clerk key is not configured. Add your CLERK_PUBLISHABLE_KEY to artifacts/talentiq-mobile/.env'
+      '[TalentIQ] Running in Guest/Dev Mode (no real Clerk key). To enable full Clerk authentication, add your CLERK_PUBLISHABLE_KEY from https://dashboard.clerk.com to artifacts/talentiq-mobile/.env'
     );
   }
 
@@ -112,7 +122,7 @@ export default function RootLayout() {
       tokenCache={tokenCache}
       proxyUrl={process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined}
     >
-      <AppProviders />
+      <AppProviders isClerkConfigured={isClerkConfigured} />
     </ClerkProvider>
   );
 }

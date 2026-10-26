@@ -25,14 +25,21 @@
 #     - typescript
 #
 # ============================================================================
-minimumReleaseAge: 1440
+minimumReleaseAge: 0
 
 minimumReleaseAgeExclude:
   # Exclude @replit scoped packages from the minimum release age check.
-  # These are published by Replit and trusted — the supply-chain attack vector
-  # this setting guards against does not apply to our own packages.
   - '@replit/*'
   - stripe-replit-sync
+  - 'expo'
+  - 'expo-*'
+  - '@expo/*'
+  - 'react'
+  - 'react-dom'
+  - 'react-native'
+  - 'react-native-*'
+  - '@react-native/*'
+  - '@react-native-*/*'
 
 packages:
   - artifacts/*

@@ -3,11 +3,11 @@ import {
   Animated,
   Dimensions,
   FlatList,
+  type FlatListProps,
   Pressable,
   StyleSheet,
   Text,
   View,
-  ViewToken,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -67,9 +67,9 @@ export default function OnboardingScreen() {
   const scrollX = useRef(new Animated.Value(0)).current;
   const [activeIndex, setActiveIndex] = useState(0);
 
-  const onViewableItemsChanged = useRef(
-    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-      if (viewableItems.length > 0 && viewableItems[0].index !== null) {
+  const onViewableItemsChanged = useRef<NonNullable<FlatListProps<OnboardingSlide>['onViewableItemsChanged']>>(
+    ({ viewableItems }) => {
+      if (viewableItems.length > 0 && viewableItems[0]?.index != null) {
         setActiveIndex(viewableItems[0].index);
       }
     },
