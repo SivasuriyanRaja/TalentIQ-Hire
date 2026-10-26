@@ -2,25 +2,15 @@
  * useCloudSync.ts
  *
  * Provides helpers to sync profile, applications, saved jobs, and recruiter
- * stages to/from the TalentIQ API server. Falls back gracefully when the user
- * is not signed in or the network is unavailable.
- *
- * Call `syncAll()` on mount after auth is ready, and after any state change
- * you want persisted to the cloud.
+ * stages to/from the TalentIQ API server. Supports dynamic API host resolution,
+ * Clerk auth tokens, and dev/demo fallback headers.
  */
 
 import { useCallback } from 'react';
+import { Platform } from 'react-native';
 import { useAuth } from '@clerk/expo';
 import type { Application, ApplicationStatus, CandidateProfile } from '@/data/talentiq';
-
-const rawDomain = process.env.EXPO_PUBLIC_DOMAIN || 'localhost:5000';
-const API_BASE = (
-  rawDomain.startsWith('http://') || rawDomain.startsWith('https://')
-    ? `${rawDomain.replace(/\/+$/, '')}/api`
-    : (rawDomain.includes('localhost') || rawDomain.includes('127.0.0.1')
-        ? `http://${rawDomain}/api`
-        : `https://${rawDomain}/api`)
-);
+import { getApiEndpoint } from '@/utils/apiConfig';
 
 type CloudProfilePayload = {
   name: string;
@@ -43,33 +33,37 @@ type CloudApplicationPayload = {
 
 async function apiFetch(
   path: string,
-  token: string,
+  token: string | null | undefined,
+  activeUserId?: string | null,
   options: RequestInit = {},
 ): Promise<Response> {
-  return fetch(`${API_BASE}${path}`, {
+  const url = getApiEndpoint(path);
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'x-user-id': activeUserId || 'user_demo_seeker',
+    ...(token ? { Authorization: `Bearer ${token}` } : { Authorization: 'Bearer dev_mock_token' }),
+    ...(options.headers as Record<string, string> | undefined),
+  };
+
+  return fetch(url, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-      ...(options.headers as Record<string, string> | undefined),
-    },
+    headers,
   });
 }
 
-export function useCloudSync() {
+export function useCloudSync(activeUserId?: string | null) {
   const { getToken, isSignedIn } = useAuth();
+  const canSync = Boolean(isSignedIn || activeUserId);
 
   // ── Profile ────────────────────────────────────────────────────────────────
 
   const fetchCloudProfile = useCallback(async (): Promise<CandidateProfile | null> => {
-    if (!isSignedIn || !API_BASE) return null;
+    if (!canSync) return null;
     try {
-      const token = await getToken();
-      if (!token) return null;
-      const res = await apiFetch('/sync/profile', token);
-      if (res.status === 404) return null;
-      if (!res.ok) return null;
-      const data = await res.json() as Record<string, unknown>;
+      const token = await getToken().catch(() => null);
+      const res = await apiFetch('/sync/profile', token, activeUserId);
+      if (res.status === 404 || !res.ok) return null;
+      const data = (await res.json()) as Record<string, unknown>;
       return {
         name: String(data.name ?? ''),
         headline: String(data.headline ?? ''),
@@ -89,30 +83,32 @@ export function useCloudSync() {
     } catch {
       return null;
     }
-  }, [isSignedIn, getToken]);
+  }, [canSync, getToken, activeUserId]);
 
-  const pushProfile = useCallback(async (profile: CandidateProfile): Promise<void> => {
-    if (!isSignedIn || !API_BASE) return;
-    try {
-      const token = await getToken();
-      if (!token) return;
-      const payload: CloudProfilePayload = {
-        name: profile.name,
-        headline: profile.headline,
-        location: profile.location,
-        yearsExperience: profile.yearsExperience,
-        skills: profile.skills,
-        education: profile.education,
-        resumeLink: profile.resumeLink,
-      };
-      await apiFetch('/sync/profile', token, {
-        method: 'PUT',
-        body: JSON.stringify(payload),
-      });
-    } catch {
-      // Non-fatal — local state is preserved
-    }
-  }, [isSignedIn, getToken]);
+  const pushProfile = useCallback(
+    async (profile: CandidateProfile): Promise<void> => {
+      if (!canSync) return;
+      try {
+        const token = await getToken().catch(() => null);
+        const payload: CloudProfilePayload = {
+          name: profile.name,
+          headline: profile.headline,
+          location: profile.location,
+          yearsExperience: profile.yearsExperience,
+          skills: profile.skills,
+          education: profile.education,
+          resumeLink: profile.resumeLink,
+        };
+        await apiFetch('/sync/profile', token, activeUserId, {
+          method: 'PUT',
+          body: JSON.stringify(payload),
+        });
+      } catch {
+        // Non-fatal — local state is preserved
+      }
+    },
+    [canSync, getToken, activeUserId],
+  );
 
   // ── Resume upload ──────────────────────────────────────────────────────────
 
@@ -130,55 +126,76 @@ export function useCloudSync() {
       resumeFileName: string;
       resumeFileSizeBytes: number;
     } | null> => {
-      if (!isSignedIn || !API_BASE) return null;
       try {
-        const token = await getToken();
-        if (!token) return null;
-
+        const token = await getToken().catch(() => null);
         const formData = new FormData();
-        formData.append('resume', {
-          uri: fileUri,
-          name: fileName,
-          type: mimeType,
-        } as unknown as Blob);
 
-        const res = await fetch(`${API_BASE}/sync/profile/resume`, {
+        if (Platform.OS === 'web') {
+          const blobRes = await fetch(fileUri);
+          const blob = await blobRes.blob();
+          formData.append('resume', blob, fileName);
+        } else {
+          formData.append('resume', {
+            uri: fileUri,
+            name: fileName,
+            type: mimeType || 'application/pdf',
+          } as unknown as Blob);
+        }
+
+        const headers: Record<string, string> = {
+          'x-user-id': activeUserId || 'user_demo_seeker',
+        };
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        } else {
+          headers['Authorization'] = 'Bearer dev_mock_token';
+        }
+
+        const url = getApiEndpoint('/sync/profile/resume');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+        const res = await fetch(url, {
           method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            // Do NOT set Content-Type here — let fetch set multipart boundary
-          },
+          headers,
           body: formData,
+          signal: controller.signal,
         });
+        clearTimeout(timeoutId);
 
-        if (!res.ok) return null;
-        const data = await res.json() as Record<string, unknown>;
+        if (!res.ok) {
+          console.warn('Resume upload endpoint returned status:', res.status);
+          return null;
+        }
+
+        const data = (await res.json()) as Record<string, unknown>;
         return {
           extractedSkills: Array.isArray(data.extractedSkills)
             ? (data.extractedSkills as unknown[]).filter((s): s is string => typeof s === 'string')
             : [],
           resumeFileName: String(data.resumeFileName ?? fileName),
-          resumeFileSizeBytes: typeof data.resumeFileSizeBytes === 'number'
-            ? data.resumeFileSizeBytes
-            : 0,
+          resumeFileSizeBytes:
+            typeof data.resumeFileSizeBytes === 'number'
+              ? data.resumeFileSizeBytes
+              : 0,
         };
-      } catch {
+      } catch (err) {
+        console.warn('uploadResume network/parse error:', err);
         return null;
       }
     },
-    [isSignedIn, getToken],
+    [getToken, activeUserId],
   );
 
   // ── Applications ───────────────────────────────────────────────────────────
 
   const fetchCloudApplications = useCallback(async (): Promise<Application[]> => {
-    if (!isSignedIn || !API_BASE) return [];
+    if (!canSync) return [];
     try {
-      const token = await getToken();
-      if (!token) return [];
-      const res = await apiFetch('/sync/applications', token);
+      const token = await getToken().catch(() => null);
+      const res = await apiFetch('/sync/applications', token, activeUserId);
       if (!res.ok) return [];
-      const data = await res.json() as unknown[];
+      const data = (await res.json()) as unknown[];
       return data
         .filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null)
         .map((item) => ({
@@ -191,7 +208,7 @@ export function useCloudSync() {
     } catch {
       return [];
     }
-  }, [isSignedIn, getToken]);
+  }, [canSync, getToken, activeUserId]);
 
   const pushApplication = useCallback(
     async (
@@ -199,10 +216,9 @@ export function useCloudSync() {
       jobTitle: string,
       company: string,
     ): Promise<void> => {
-      if (!isSignedIn || !API_BASE) return;
+      if (!canSync) return;
       try {
-        const token = await getToken();
-        if (!token) return;
+        const token = await getToken().catch(() => null);
         const payload: CloudApplicationPayload = {
           jobId: application.jobId,
           jobTitle,
@@ -211,7 +227,7 @@ export function useCloudSync() {
           matchScore: application.matchScore,
           appliedAt: application.appliedAt,
         };
-        await apiFetch('/sync/applications', token, {
+        await apiFetch('/sync/applications', token, activeUserId, {
           method: 'POST',
           body: JSON.stringify(payload),
         });
@@ -219,64 +235,66 @@ export function useCloudSync() {
         // Non-fatal
       }
     },
-    [isSignedIn, getToken],
+    [canSync, getToken, activeUserId],
   );
 
-  const removeApplication = useCallback(async (jobId: string): Promise<void> => {
-    if (!isSignedIn || !API_BASE) return;
-    try {
-      const token = await getToken();
-      if (!token) return;
-      await apiFetch(`/sync/applications/${encodeURIComponent(jobId)}`, token, {
-        method: 'DELETE',
-      });
-    } catch {
-      // Non-fatal
-    }
-  }, [isSignedIn, getToken]);
+  const removeApplication = useCallback(
+    async (jobId: string): Promise<void> => {
+      if (!canSync) return;
+      try {
+        const token = await getToken().catch(() => null);
+        await apiFetch(`/sync/applications/${encodeURIComponent(jobId)}`, token, activeUserId, {
+          method: 'DELETE',
+        });
+      } catch {
+        // Non-fatal
+      }
+    },
+    [canSync, getToken, activeUserId],
+  );
 
   // ── Saved Jobs ─────────────────────────────────────────────────────────────
 
   const fetchCloudSavedJobIds = useCallback(async (): Promise<string[]> => {
-    if (!isSignedIn || !API_BASE) return [];
+    if (!canSync) return [];
     try {
-      const token = await getToken();
-      if (!token) return [];
-      const res = await apiFetch('/sync/saved-jobs', token);
+      const token = await getToken().catch(() => null);
+      const res = await apiFetch('/sync/saved-jobs', token, activeUserId);
       if (!res.ok) return [];
-      const data = await res.json() as unknown;
+      const data = (await res.json()) as unknown;
       return Array.isArray(data)
         ? (data as unknown[]).filter((s): s is string => typeof s === 'string')
         : [];
     } catch {
       return [];
     }
-  }, [isSignedIn, getToken]);
+  }, [canSync, getToken, activeUserId]);
 
-  const toggleSavedJobCloud = useCallback(async (jobId: string): Promise<void> => {
-    if (!isSignedIn || !API_BASE) return;
-    try {
-      const token = await getToken();
-      if (!token) return;
-      await apiFetch('/sync/saved-jobs', token, {
-        method: 'POST',
-        body: JSON.stringify({ jobId }),
-      });
-    } catch {
-      // Non-fatal
-    }
-  }, [isSignedIn, getToken]);
+  const toggleSavedJobCloud = useCallback(
+    async (jobId: string): Promise<void> => {
+      if (!canSync) return;
+      try {
+        const token = await getToken().catch(() => null);
+        await apiFetch('/sync/saved-jobs', token, activeUserId, {
+          method: 'POST',
+          body: JSON.stringify({ jobId }),
+        });
+      } catch {
+        // Non-fatal
+      }
+    },
+    [canSync, getToken, activeUserId],
+  );
 
   // ── Recruiter Stages ───────────────────────────────────────────────────────
 
   const fetchCloudStages = useCallback(async (): Promise<Record<string, ApplicationStatus>> => {
-    if (!isSignedIn || !API_BASE) return {};
+    if (!canSync) return {};
     try {
-      const token = await getToken();
-      if (!token) return {};
-      const res = await apiFetch('/sync/stages', token);
+      const token = await getToken().catch(() => null);
+      const res = await apiFetch('/sync/stages', token, activeUserId);
       if (!res.ok) return {};
-      const data = await res.json() as unknown;
+      const data = (await res.json()) as unknown;
       if (typeof data !== 'object' || data === null) return {};
       const result: Record<string, ApplicationStatus> = {};
       for (const [k, v] of Object.entries(data as Record<string, unknown>)) {
@@ -286,24 +304,24 @@ export function useCloudSync() {
     } catch {
       return {};
     }
-  }, [isSignedIn, getToken]);
+  }, [canSync, getToken, activeUserId]);
 
   const pushStage = useCallback(
     async (candidateName: string, status: ApplicationStatus): Promise<void> => {
-      if (!isSignedIn || !API_BASE) return;
+      if (!canSync) return;
       try {
-        const token = await getToken();
-        if (!token) return;
+        const token = await getToken().catch(() => null);
         await apiFetch(
           `/sync/stages/${encodeURIComponent(candidateName)}`,
           token,
+          activeUserId,
           { method: 'PUT', body: JSON.stringify({ status }) },
         );
       } catch {
         // Non-fatal
       }
     },
-    [isSignedIn, getToken],
+    [canSync, getToken, activeUserId],
   );
 
   return {

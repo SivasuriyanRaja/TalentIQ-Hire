@@ -64,6 +64,7 @@ export default function ProfileScreen() {
   const [saved, setSaved] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState('');
 
   useEffect(() => {
     setName(profile.name);
@@ -96,14 +97,6 @@ export default function ProfileScreen() {
   };
 
   const pickAndUploadResume = async () => {
-    if (!isSignedIn) {
-      Alert.alert(
-        'Sign in required',
-        'Please sign in to upload your resume. It will be stored securely in the cloud.',
-      );
-      return;
-    }
-
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ALLOWED_MIME_TYPES,
@@ -124,20 +117,30 @@ export default function ProfileScreen() {
       setIsUploading(true);
       setUploadSuccess(false);
 
-      await uploadResume(
+      const mime =
+        asset.mimeType ||
+        (asset.name?.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'application/pdf');
+
+      const uploadRes = await uploadResume(
         asset.uri,
-        asset.name ?? 'resume',
-        asset.mimeType ?? 'application/pdf',
+        asset.name ?? 'resume.pdf',
+        mime,
+        sizeBytes,
       );
 
       setIsUploading(false);
+      setUploadMessage(
+        uploadRes?.isCloudSynced
+          ? 'Resume uploaded & cloud-synced'
+          : 'Resume saved to profile',
+      );
       setUploadSuccess(true);
-      setTimeout(() => setUploadSuccess(false), 3000);
-    } catch (err) {
+      setTimeout(() => setUploadSuccess(false), 3500);
+    } catch (err: any) {
       setIsUploading(false);
       Alert.alert(
-        'Upload failed',
-        'Could not upload your resume. Please check your connection and try again.',
+        'Upload note',
+        err?.message || 'Could not complete resume upload. Please check your connection.',
       );
     }
   };
@@ -278,7 +281,7 @@ export default function ProfileScreen() {
             <>
               <Feather name="check" size={16} color={colors.primary} />
               <Text style={[styles.uploadButtonText, { color: colors.primary }]}>
-                Resume uploaded successfully
+                {uploadMessage || 'Resume uploaded successfully'}
               </Text>
             </>
           ) : (
