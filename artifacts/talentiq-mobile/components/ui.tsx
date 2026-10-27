@@ -226,6 +226,7 @@ export function Field({
             borderColor: colors.border,
             height: multiline ? 104 : 52,
           },
+          Platform.OS === 'web' && ({ outlineStyle: 'none', outlineWidth: 0, outlineColor: 'transparent', boxShadow: 'none' } as any),
         ]}
       />
     </View>
@@ -355,6 +356,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     fontFamily: 'Inter_400Regular',
     fontSize: 15,
+    ...(Platform.OS === 'web'
+      ? ({ outlineStyle: 'none', outlineWidth: 0, outlineColor: 'transparent', boxShadow: 'none' } as any)
+      : {}),
   },
   chip: { borderRadius: 999, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8 },
   chipText: { fontFamily: 'Inter_500Medium', fontSize: 12 },

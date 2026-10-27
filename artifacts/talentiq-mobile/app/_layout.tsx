@@ -17,8 +17,37 @@ import {
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { setAuthTokenGetter, setBaseUrl } from '@workspace/api-client-react';
+import { Platform } from 'react-native';
 import { useTalentIQ } from '@/state/TalentIQContext';
 import { getApiBaseUrl } from '@/utils/apiConfig';
+
+// Universal Web Reset: Eliminate browser default focus outlines / white selection boxes
+if (Platform.OS === 'web' && typeof document !== 'undefined') {
+  const styleId = 'talentiq-web-input-focus-reset';
+  if (!document.getElementById(styleId)) {
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+      input, textarea, select, [contenteditable="true"] {
+        outline: none !important;
+        outline-style: none !important;
+        outline-width: 0 !important;
+        outline-color: transparent !important;
+        box-shadow: none !important;
+        -webkit-tap-highlight-color: transparent !important;
+      }
+      input:focus, textarea:focus, select:focus, [contenteditable="true"]:focus,
+      input:focus-visible, textarea:focus-visible {
+        outline: none !important;
+        outline-style: none !important;
+        outline-width: 0 !important;
+        outline-color: transparent !important;
+        box-shadow: none !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+}
 
 SplashScreen.preventAutoHideAsync();
 

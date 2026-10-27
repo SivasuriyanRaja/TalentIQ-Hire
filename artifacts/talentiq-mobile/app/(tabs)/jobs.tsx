@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Chip, EmptyState, Eyebrow, PrimaryButton, Screen, SectionTitle } from '@/components/ui';
 import { JobCard as JobItemCard } from '@/components/JobCard';
 import { estimateMatch } from '@/data/talentiq';
@@ -57,7 +57,11 @@ export default function JobsScreen() {
           onChangeText={setSearch}
           placeholder={role === 'recruiter' ? 'Search your roles' : 'Role, company, or skill'}
           placeholderTextColor={colors.mutedForeground}
-          style={[styles.searchInput, { color: colors.foreground }]}
+          style={[
+            styles.searchInput,
+            { color: colors.foreground },
+            Platform.OS === 'web' && ({ outlineStyle: 'none', outlineWidth: 0, outlineColor: 'transparent', boxShadow: 'none' } as any),
+          ]}
           returnKeyType="search"
           accessibilityLabel="Search jobs"
         />
@@ -117,7 +121,15 @@ const styles = StyleSheet.create({
   title: { fontFamily: 'Inter_700Bold', fontSize: 29, letterSpacing: -1 },
   addButton: { width: 43, height: 43, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   search: { height: 51, borderWidth: 1, borderRadius: 17, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, gap: 10 },
-  searchInput: { flex: 1, fontFamily: 'Inter_400Regular', fontSize: 13, height: '100%' },
+  searchInput: {
+    flex: 1,
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    height: '100%',
+    ...(Platform.OS === 'web'
+      ? ({ outlineStyle: 'none', outlineWidth: 0, outlineColor: 'transparent', boxShadow: 'none' } as any)
+      : {}),
+  },
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   introRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sortText: { fontFamily: 'Inter_500Medium', fontSize: 11 },

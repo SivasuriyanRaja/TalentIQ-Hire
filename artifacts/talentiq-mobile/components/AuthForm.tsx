@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -849,7 +850,11 @@ function AuthInputField({
           autoCapitalize={autoCapitalize}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          style={[styles.textInput, { color: colors.foreground }]}
+          style={[
+            styles.textInput,
+            { color: colors.foreground },
+            Platform.OS === 'web' && ({ outlineStyle: 'none', outlineWidth: 0, outlineColor: 'transparent', boxShadow: 'none' } as any),
+          ]}
         />
         {isPassword ? (
           <Pressable
@@ -1102,6 +1107,9 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
     fontSize: 14,
     height: '100%',
+    ...(Platform.OS === 'web'
+      ? ({ outlineStyle: 'none', outlineWidth: 0, outlineColor: 'transparent', boxShadow: 'none' } as any)
+      : {}),
   },
   eyeButton: {
     padding: 6,
