@@ -334,3 +334,33 @@ export const CloudAssessmentAttempt =
     "CloudAssessmentAttempt",
     CloudAssessmentAttemptSchema,
   );
+
+// ─── User (Native Auth Account) ──────────────────────────────────────────
+
+export interface IUser extends Document {
+  userId: string;
+  name: string;
+  email: string;
+  passwordHash: string;
+  role: "candidate" | "recruiter";
+  headline?: string;
+  location?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const UserSchema = new Schema<IUser>(
+  {
+    userId: { type: String, required: true, unique: true, index: true },
+    name: { type: String, required: true, maxlength: 120 },
+    email: { type: String, required: true, unique: true, index: true, lowercase: true, trim: true },
+    passwordHash: { type: String, required: true },
+    role: { type: String, enum: ["candidate", "recruiter"], default: "candidate" },
+    headline: { type: String, default: "" },
+    location: { type: String, default: "" },
+  },
+  { timestamps: true },
+);
+
+export const User =
+  mongoose.models.User ?? mongoose.model<IUser>("User", UserSchema);
