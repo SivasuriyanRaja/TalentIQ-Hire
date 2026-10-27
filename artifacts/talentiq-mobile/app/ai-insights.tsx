@@ -77,7 +77,7 @@ function ScoreRing({
       <Svg
         width={size}
         height={size}
-        style={StyleSheet.absoluteFill}
+        style={[StyleSheet.absoluteFill, { transform: [{ rotate: '-90deg' }] }]}
       >
         <AnimatedCircle
           cx={size / 2}
@@ -89,8 +89,6 @@ function ScoreRing({
           strokeDashoffset={strokeDashoffset as unknown as number}
           strokeLinecap="round"
           fill="none"
-          rotation={-90}
-          origin={`${size / 2}, ${size / 2}`}
         />
       </Svg>
       <View style={[StyleSheet.absoluteFill, styles.ringCenter]}>

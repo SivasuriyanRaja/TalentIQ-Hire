@@ -122,7 +122,7 @@ export default function JobDetailScreen() {
               </Text>
             </View>
             <View style={styles.ringWrap}>
-              <Svg width={54} height={54} viewBox="0 0 54 54">
+              <Svg width={54} height={54} viewBox="0 0 54 54" style={{ transform: [{ rotate: '-90deg' }] }}>
                 <Circle cx="27" cy="27" r="22" stroke={colors.secondary} strokeWidth="5" fill="none" />
                 <Circle
                   cx="27"
@@ -133,8 +133,6 @@ export default function JobDetailScreen() {
                   strokeDasharray={`${(previewScore / 100) * 138} 138`}
                   strokeLinecap="round"
                   fill="none"
-                  rotation="-90"
-                  origin="27, 27"
                 />
               </Svg>
               <Text style={[styles.ringText, { color: colors.foreground }]}>{previewScore}</Text>
