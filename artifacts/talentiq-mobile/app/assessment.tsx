@@ -51,8 +51,19 @@ export default function AssessmentScreen() {
   const colors = useColors();
   const router = useRouter();
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
-  const { jobs, completeAssessment, isUserSignedIn, authUser } = useTalentIQ();
+  const { jobs, completeAssessment, isUserSignedIn, authUser, profile } = useTalentIQ();
   const mutation = useGenerateTalentAssessment();
+
+  const isDark = colors.background === '#111A19';
+  const candidateName = authUser?.name || profile?.name || 'Alexander Morgan';
+  const candidateInitials =
+    candidateName
+      .split(' ')
+      .filter(Boolean)
+      .map((part) => part[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || 'AM';
 
   const job = jobs.find((item) => item.id === jobId);
 
@@ -414,16 +425,16 @@ export default function AssessmentScreen() {
 
         <View style={[styles.startCard, { backgroundColor: colors.foreground }]}>
           <View style={styles.cardHeaderRow}>
-            <View style={styles.sparkle}>
-              <Feather name="zap" size={22} color={colors.primaryForeground} />
+            <View style={[styles.sparkle, { backgroundColor: isDark ? 'rgba(17, 26, 25, 0.12)' : '#36483E' }]}>
+              <Feather name="zap" size={22} color={isDark ? colors.background : colors.primaryForeground} />
             </View>
-            <View style={styles.proctorPill}>
-              <Feather name="shield" size={12} color="#F0A895" />
-              <Text style={styles.proctorPillText}>AI PROCTORED</Text>
+            <View style={[styles.proctorPill, { backgroundColor: isDark ? 'rgba(17, 26, 25, 0.12)' : '#36483E' }]}>
+              <Feather name="shield" size={12} color={isDark ? '#C95744' : '#F0A895'} />
+              <Text style={[styles.proctorPillText, { color: isDark ? '#C95744' : '#F0A895' }]}>AI PROCTORED</Text>
             </View>
           </View>
 
-          <Text style={[styles.eyebrow, { color: '#F0A895' }]}>
+          <Text style={[styles.eyebrow, { color: isDark ? '#C95744' : '#F0A895' }]}>
             {job.company.toUpperCase()} · TECHNICAL ASSESSMENT
           </Text>
           <Text style={[styles.heroTitle, { color: colors.background }]}>
@@ -471,30 +482,53 @@ export default function AssessmentScreen() {
             <Text style={[styles.setupLabel, { color: colors.background }]}>Skills Evaluated</Text>
             <View style={styles.skillWrap}>
               {job.skills.map((skill) => (
-                <View key={skill} style={styles.skillBadge}>
-                  <Text style={styles.skillBadgeText}>{skill}</Text>
+                <View
+                  key={skill}
+                  style={[
+                    styles.skillBadge,
+                    {
+                      backgroundColor: isDark ? 'rgba(17, 26, 25, 0.08)' : 'rgba(255, 255, 255, 0.15)',
+                      borderColor: isDark ? 'rgba(17, 26, 25, 0.2)' : 'rgba(255, 255, 255, 0.25)',
+                    },
+                  ]}
+                >
+                  <Text style={[styles.skillBadgeText, { color: colors.background }]}>{skill}</Text>
                 </View>
               ))}
             </View>
           </View>
 
           {/* Anti-Proxy Candidate Attestation & Honor Pledge */}
-          <View style={styles.pledgeCard}>
+          <View
+            style={[
+              styles.pledgeCard,
+              {
+                backgroundColor: isDark ? 'rgba(17, 26, 25, 0.05)' : 'rgba(255, 255, 255, 0.08)',
+                borderColor: isDark ? 'rgba(17, 26, 25, 0.16)' : 'rgba(255, 255, 255, 0.18)',
+              },
+            ]}
+          >
             <View style={styles.pledgeHeaderRow}>
-              <View style={styles.pledgeIconWrap}>
-                <Feather name="shield" size={14} color="#10B981" />
+              <View style={[styles.pledgeIconWrap, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.18)' : 'rgba(16, 185, 129, 0.25)' }]}>
+                <Feather name="shield" size={14} color="#059669" />
               </View>
-              <Text style={styles.pledgeHeaderTitle}>Anti-Proxy Integrity Attestation</Text>
-              <Pressable onPress={() => setShowPledgeModal(true)}>
-                <Feather name="info" size={15} color="#F0A895" />
+              <Text style={[styles.pledgeHeaderTitle, { color: colors.background }]}>
+                Anti-Proxy Integrity Attestation
+              </Text>
+              <Pressable onPress={() => setShowPledgeModal(true)} hitSlop={8}>
+                <Feather name="info" size={16} color={isDark ? '#C95744' : '#F0A895'} />
               </Pressable>
             </View>
 
             <View style={styles.pledgeCandidateRow}>
-              <Avatar initials={authUser?.name ? authUser.name.slice(0, 2).toUpperCase() : 'AM'} size={32} />
+              <Avatar initials={candidateInitials} size={32} />
               <View style={{ flex: 1, gap: 1 }}>
-                <Text style={styles.pledgeCandidateName}>{authUser?.name || 'Alexander Morgan'}</Text>
-                <Text style={styles.pledgeCandidateMeta}>Single Device Verified · Zero Proxy Policy</Text>
+                <Text style={[styles.pledgeCandidateName, { color: colors.background }]}>
+                  {candidateName}
+                </Text>
+                <Text style={[styles.pledgeCandidateMeta, { color: isDark ? '#4B5563' : '#D1D5DB' }]}>
+                  Single Device Verified · Zero Proxy Policy
+                </Text>
               </View>
             </View>
 
@@ -502,10 +536,22 @@ export default function AssessmentScreen() {
               onPress={() => setIdentityPledgeSigned((prev) => !prev)}
               style={styles.checkboxRow}
             >
-              <View style={[styles.checkboxBox, identityPledgeSigned && styles.checkboxBoxActive]}>
-                {identityPledgeSigned && <Feather name="check" size={12} color="#FFFFFF" />}
+              <View
+                style={[
+                  styles.checkboxBox,
+                  {
+                    borderColor: identityPledgeSigned ? '#10B981' : isDark ? '#111A19' : '#F0A895',
+                    backgroundColor: identityPledgeSigned
+                      ? '#10B981'
+                      : isDark
+                        ? '#FFFFFF'
+                        : 'transparent',
+                  },
+                ]}
+              >
+                {identityPledgeSigned && <Feather name="check" size={13} color="#FFFFFF" />}
               </View>
-              <Text style={styles.checkboxLabel}>
+              <Text style={[styles.checkboxLabel, { color: colors.background }]}>
                 I certify that I am the registered candidate and will complete this assessment independently with NO proxy assistance, external AI tools, or secondary devices.
               </Text>
             </Pressable>
@@ -1187,12 +1233,12 @@ const styles = StyleSheet.create({
   chipRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   skillWrap: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   skillBadge: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    paddingHorizontal: 9,
-    paddingVertical: 4,
+    paddingHorizontal: 11,
+    paddingVertical: 5,
     borderRadius: 8,
+    borderWidth: 1,
   },
-  skillBadgeText: { color: '#FFFFFF', fontFamily: 'Inter_500Medium', fontSize: 11 },
+  skillBadgeText: { fontFamily: 'Inter_600SemiBold', fontSize: 12 },
   integrityBox: {
     flexDirection: 'row',
     gap: 10,
@@ -1424,12 +1470,10 @@ const styles = StyleSheet.create({
 
   // Anti-Proxy Pledge Card
   pledgeCard: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
     borderRadius: 16,
-    padding: 14,
-    gap: 12,
+    padding: 15,
+    gap: 13,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
   },
   pledgeHeaderRow: {
     flexDirection: 'row',
@@ -1438,33 +1482,29 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   pledgeIconWrap: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(16,185,129,0.2)',
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
   },
   pledgeHeaderTitle: {
     flex: 1,
-    color: '#FFFFFF',
     fontFamily: 'Inter_700Bold',
-    fontSize: 12,
+    fontSize: 13,
     letterSpacing: 0.3,
   },
   pledgeCandidateRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 4,
+    paddingVertical: 2,
   },
   pledgeCandidateName: {
-    color: '#FFFFFF',
     fontFamily: 'Inter_600SemiBold',
     fontSize: 13,
   },
   pledgeCandidateMeta: {
-    color: '#D1D5DB',
     fontFamily: 'Inter_400Regular',
     fontSize: 11,
   },
@@ -1475,11 +1515,10 @@ const styles = StyleSheet.create({
     paddingTop: 4,
   },
   checkboxBox: {
-    width: 20,
-    height: 20,
+    width: 22,
+    height: 22,
     borderRadius: 6,
     borderWidth: 1.5,
-    borderColor: '#F0A895',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 1,
@@ -1490,10 +1529,9 @@ const styles = StyleSheet.create({
   },
   checkboxLabel: {
     flex: 1,
-    color: '#F3F4F6',
     fontFamily: 'Inter_400Regular',
-    fontSize: 11,
-    lineHeight: 16,
+    fontSize: 12,
+    lineHeight: 18,
   },
 
   // Anti-Proxy Audit Card
