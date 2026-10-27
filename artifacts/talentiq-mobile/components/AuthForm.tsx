@@ -31,7 +31,6 @@ export function AuthForm({ mode: initialMode }: AuthFormProps) {
   const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { loginGuest } = useTalentIQ();
 
   const handleTabChange = (tab: 'sign-in' | 'sign-up') => {
     if (tab !== activeTab) {
@@ -54,7 +53,7 @@ export function AuthForm({ mode: initialMode }: AuthFormProps) {
       keyboardDismissMode="interactive"
       showsVerticalScrollIndicator={false}
     >
-      {/* ── Top Bar with Back & Guest Action ── */}
+      {/* ── Top Bar with Back & Brand Wordmark ── */}
       <View style={styles.topBar}>
         <Pressable
           onPress={() => {
@@ -76,17 +75,7 @@ export function AuthForm({ mode: initialMode }: AuthFormProps) {
 
         <Wordmark />
 
-        <Pressable
-          onPress={() => {
-            void Haptics.selectionAsync();
-            void loginGuest();
-          }}
-          style={({ pressed }) => [styles.guestLink, { opacity: pressed ? 0.7 : 1 }]}
-          hitSlop={8}
-        >
-          <Text style={[styles.guestLinkText, { color: colors.mutedForeground }]}>Guest</Text>
-          <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
-        </Pressable>
+        <View style={{ width: 38 }} />
       </View>
 
       {/* ── Hero Brand Header with Ambient Orbs ── */}
@@ -210,175 +199,102 @@ function ValuePill({
 function SignInSection({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }) {
   const colors = useColors();
   const router = useRouter();
-  const { signIn, errors, fetchStatus } = useSignIn();
-  const { loginDemo } = useTalentIQ();
+  const { errors } = useSignIn();
+  const { loginWithCredentials } = useTalentIQ();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [code, setCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
 
-  const needsTrustCode = signIn?.status === 'needs_client_trust';
-
-  const finalize = async () => {
-    try {
-      if (router.canDismiss()) {
-        router.dismissAll();
-      }
-    } catch {}
-    await signIn?.finalize({
-      navigate: ({ decorateUrl }) => router.replace(decorateUrl('/(tabs)') as Href),
-    });
-  };
-
   const submit = async () => {
     setMessage('');
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+      setMessage('Please enter a valid email address.');
+      return;
+    }
+    if (!password) {
+      setMessage('Please enter your password.');
+      return;
+    }
+
     setSending(true);
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    const cleanEmail = email.trim().toLowerCase();
-    if (cleanEmail === 'candidate@talentiq.ai' || cleanEmail.includes('candidate')) {
-      await loginDemo('candidate');
-      return;
-    }
-    if (cleanEmail === 'recruiter@talentiq.ai' || cleanEmail.includes('recruiter')) {
-      await loginDemo('recruiter');
-      return;
-    }
-
     try {
-      const { error } = await signIn.password({ emailAddress: email.trim(), password });
-      if (error) {
-        setMessage(error.message ?? 'We could not sign you in. Check your details and try again.');
-        return;
+      const result = await loginWithCredentials({ email: cleanEmail, password });
+      if (!result.success) {
+        setMessage(result.error ?? 'Invalid email or password. Please try again.');
       }
-      if (signIn.status === 'complete') {
-        await finalize();
-      } else if (signIn.status === 'needs_client_trust') {
-        const emailCode = signIn.supportedSecondFactors.find(
-          (factor) => factor.strategy === 'email_code',
-        );
-        if (emailCode) {
-          const result = await signIn.mfa.sendEmailCode();
-          if (result.error) setMessage(result.error.message ?? 'Could not send your sign-in code.');
-        } else {
-          setMessage('This account needs an additional sign-in step.');
-        }
-      } else {
-        setMessage('Sign-in needs another step. Please contact your administrator.');
-      }
-    } catch {
-      setMessage('Clerk auth is in local/test mode. Tap Candidate Demo or Recruiter Demo below to log in immediately!');
+    } catch (err: any) {
+      setMessage(err?.message ?? 'Network error connecting to TalentIQ server.');
     } finally {
       setSending(false);
     }
   };
 
-  const verifyTrust = async () => {
-    setMessage('');
-    try {
-      const { error } = await signIn.mfa.verifyEmailCode({ code: code.trim() });
-      if (error) {
-        setMessage(error.message ?? 'That code did not work. Check it and try again.');
-      } else if (signIn.status === 'complete') {
-        await finalize();
-      }
-    } catch {
-      setMessage('We could not verify that code. Please try again.');
-    }
-  };
-
-  const fillDemo = async (role: 'candidate' | 'recruiter') => {
-    void Haptics.selectionAsync();
-    setSending(true);
-    await loginDemo(role);
-  };
-
   return (
     <View style={styles.formBody}>
-      {needsTrustCode ? (
-        <View style={styles.verifyBox}>
-          <View style={[styles.verifyIconWrap, { backgroundColor: colors.accent }]}>
-            <Feather name="shield" size={24} color={colors.accentForeground} />
-          </View>
-          <Text style={[styles.verifyTitle, { color: colors.foreground }]}>Check your inbox</Text>
-          <Text style={[styles.verifySub, { color: colors.mutedForeground }]}>
-            We’ve sent a verification code to <Text style={{ fontWeight: '600' }}>{email}</Text>.
-          </Text>
-          <AuthInputField
-            label="Verification Code"
-            icon="key"
-            value={code}
-            onChangeText={setCode}
-            placeholder="6-digit code"
-            keyboardType="number-pad"
-            testID="signin-verification-code"
-          />
-        </View>
-      ) : (
-        <>
-          <AuthInputField
-            label="Email Address"
-            icon="mail"
-            value={email}
-            onChangeText={setEmail}
-            placeholder="name@company.com"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            testID="signin-email"
-            error={errors.fields.identifier?.message}
-          />
+      <AuthInputField
+        label="Email Address"
+        icon="mail"
+        value={email}
+        onChangeText={setEmail}
+        placeholder="name@company.com"
+        keyboardType="email-address"
+        autoCapitalize="none"
+        testID="signin-email"
+        error={errors.fields.identifier?.message}
+      />
 
-          <AuthInputField
-            label="Password"
-            icon="lock"
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Enter your password"
-            secureTextEntry={!showPassword}
-            isPassword
-            showPassword={showPassword}
-            onToggleShowPassword={() => {
-              void Haptics.selectionAsync();
-              setShowPassword(!showPassword);
-            }}
-            autoCapitalize="none"
-            testID="signin-password"
-            error={errors.fields.password?.message}
-          />
+      <AuthInputField
+        label="Password"
+        icon="lock"
+        value={password}
+        onChangeText={setPassword}
+        placeholder="Enter your password"
+        secureTextEntry={!showPassword}
+        isPassword
+        showPassword={showPassword}
+        onToggleShowPassword={() => {
+          void Haptics.selectionAsync();
+          setShowPassword(!showPassword);
+        }}
+        autoCapitalize="none"
+        testID="signin-password"
+        error={errors.fields.password?.message}
+      />
 
-          <View style={styles.extraRow}>
-            <Pressable
-              onPress={() => {
-                Alert.alert(
-                  'Password Reset',
-                  'Please contact support or follow the link sent to your registered email to reset your credentials.',
-                );
-              }}
-              hitSlop={6}
-            >
-              <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>Forgot password?</Text>
-            </Pressable>
-          </View>
-        </>
-      )}
+      <View style={styles.extraRow}>
+        <Pressable
+          onPress={() => {
+            Alert.alert(
+              'Password Reset',
+              'Please contact support or follow the link sent to your registered email to reset your credentials.',
+            );
+          }}
+          hitSlop={6}
+        >
+          <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>Forgot password?</Text>
+        </Pressable>
+      </View>
 
       {message ? (
         <View
           style={[
             styles.messageCard,
             {
-              backgroundColor: message.includes('filled') ? colors.accent : colors.secondary,
-              borderColor: message.includes('filled') ? colors.accentForeground : colors.border,
+              backgroundColor: colors.secondary,
+              borderColor: colors.border,
             },
           ]}
         >
           <Feather
-            name={message.includes('filled') ? 'info' : 'alert-circle'}
+            name="alert-circle"
             size={16}
-            color={message.includes('filled') ? colors.accentForeground : colors.primary}
+            color={colors.primary}
           />
           <Text style={[styles.messageText, { color: colors.foreground }]}>{message}</Text>
         </View>
@@ -386,51 +302,27 @@ function SignInSection({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }) {
 
       <Pressable
         testID="signin-submit"
-        disabled={needsTrustCode ? code.length < 4 : !email.includes('@') || !password || sending}
-        onPress={needsTrustCode ? verifyTrust : submit}
+        disabled={!email.includes('@') || !password || sending}
+        onPress={submit}
         style={({ pressed }) => [
           styles.submitButton,
           {
             backgroundColor: colors.primary,
-            opacity: (!email.includes('@') || !password || sending) && !needsTrustCode ? 0.55 : pressed ? 0.86 : 1,
+            opacity: !email.includes('@') || !password || sending ? 0.55 : pressed ? 0.86 : 1,
           },
         ]}
       >
-        {sending || fetchStatus === 'fetching' ? (
+        {sending ? (
           <ActivityIndicator color={colors.primaryForeground} />
         ) : (
           <>
             <Text style={[styles.submitButtonText, { color: colors.primaryForeground }]}>
-              {needsTrustCode ? 'Verify & Continue' : 'Sign In'}
+              Sign In
             </Text>
             <Feather name="arrow-right" size={17} color={colors.primaryForeground} />
           </>
         )}
       </Pressable>
-
-      {/* ── Demo Fast Track Pill Actions ── */}
-      <View style={styles.demoSection}>
-        <View style={styles.demoHeader}>
-          <Feather name="play-circle" size={13} color={colors.primary} />
-          <Text style={[styles.demoTitle, { color: colors.mutedForeground }]}>QUICK DEMO ACCELERATOR</Text>
-        </View>
-        <View style={styles.demoButtonRow}>
-          <Pressable
-            onPress={() => fillDemo('candidate')}
-            style={[styles.demoChip, { backgroundColor: colors.card, borderColor: colors.border }]}
-          >
-            <Feather name="user" size={12} color={colors.primary} />
-            <Text style={[styles.demoChipText, { color: colors.foreground }]}>Candidate Demo</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => fillDemo('recruiter')}
-            style={[styles.demoChip, { backgroundColor: colors.card, borderColor: colors.border }]}
-          >
-            <Feather name="briefcase" size={12} color={colors.primary} />
-            <Text style={[styles.demoChipText, { color: colors.foreground }]}>Recruiter Demo</Text>
-          </Pressable>
-        </View>
-      </View>
 
       {/* ── Social / Alternative Section ── */}
       <View style={styles.dividerRow}>
@@ -480,22 +372,16 @@ function SignInSection({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }) {
 function SignUpSection({ onSwitchToSignIn }: { onSwitchToSignIn: () => void }) {
   const colors = useColors();
   const router = useRouter();
-  const { signUp, errors, fetchStatus } = useSignUp();
-  const { role, setRole, loginDemo } = useTalentIQ();
+  const { errors } = useSignUp();
+  const { role, setRole, registerWithCredentials } = useTalentIQ();
 
   const [selectedRole, setSelectedRole] = useState<UserRole>(role);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [code, setCode] = useState('');
   const [message, setMessage] = useState('');
   const [sendingCode, setSendingCode] = useState(false);
-
-  const isVerifying =
-    signUp?.status === 'missing_requirements' &&
-    signUp.unverifiedFields.includes('email_address') &&
-    signUp.missingFields.length === 0;
 
   const strength = getPasswordStrength(password);
 
@@ -507,100 +393,47 @@ function SignUpSection({ onSwitchToSignIn }: { onSwitchToSignIn: () => void }) {
 
   const submit = async () => {
     setMessage('');
+    const cleanName = fullName.trim();
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanName || cleanName.length < 2) {
+      setMessage('Please enter your full name (at least 2 characters).');
+      return;
+    }
+    if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+      setMessage('Please enter a valid email address.');
+      return;
+    }
+    if (password.length < 6) {
+      setMessage('Password must be at least 6 characters long.');
+      return;
+    }
+
     setSendingCode(true);
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
     try {
-      const { error } = await signUp.password({
-        emailAddress: email.trim(),
+      const result = await registerWithCredentials({
+        name: cleanName,
+        email: cleanEmail,
         password,
-        firstName: fullName.trim().split(' ')[0] || undefined,
-        lastName: fullName.trim().split(' ').slice(1).join(' ') || undefined,
+        role: selectedRole,
       });
-      if (error) {
-        setMessage(error.message ?? 'We could not create your account. Check your details and try again.');
-        return;
+
+      if (!result.success) {
+        setMessage(result.error ?? 'We could not create your account. Please check your details and try again.');
       }
-      const result = await signUp.verifications.sendEmailCode();
-      if (result.error) {
-        setMessage(result.error.message ?? 'We could not send your verification code.');
-      }
-    } catch {
-      setMessage('Clerk auth is in local/test mode. Initializing demo session...');
-      await loginDemo(selectedRole);
+    } catch (err: any) {
+      setMessage(err?.message ?? 'Network error connecting to TalentIQ server.');
     } finally {
       setSendingCode(false);
     }
   };
 
-  const verify = async () => {
-    setMessage('');
-    try {
-      const { error } = await signUp.verifications.verifyEmailCode({ code: code.trim() });
-      if (error) {
-        setMessage(error.message ?? 'That code did not work. Check it and try again.');
-        return;
-      }
-      if (signUp.status === 'complete') {
-        try {
-          if (router.canDismiss()) {
-            router.dismissAll();
-          }
-        } catch {}
-        await signUp.finalize({
-          navigate: ({ decorateUrl }) => router.replace(decorateUrl('/role-select') as Href),
-        });
-      } else {
-        setMessage('Your sign-up needs another step. Please contact support.');
-      }
-    } catch {
-      setMessage('We could not verify that code. Please try again.');
-    }
-  };
-
   return (
     <View style={styles.formBody}>
-      {isVerifying ? (
-        <View style={styles.verifyBox}>
-          <View style={[styles.verifyIconWrap, { backgroundColor: colors.accent }]}>
-            <Feather name="mail" size={24} color={colors.accentForeground} />
-          </View>
-          <Text style={[styles.verifyTitle, { color: colors.foreground }]}>Verify your email</Text>
-          <Text style={[styles.verifySub, { color: colors.mutedForeground }]}>
-            We sent a six-digit verification code to <Text style={{ fontWeight: '600' }}>{email}</Text>.
-          </Text>
-
-          <AuthInputField
-            label="Email Verification Code"
-            icon="key"
-            value={code}
-            onChangeText={setCode}
-            placeholder="Enter 6-digit code"
-            keyboardType="number-pad"
-            autoCapitalize="none"
-            testID="verification-code"
-          />
-
-          <Pressable
-            onPress={async () => {
-              void Haptics.selectionAsync();
-              setMessage('');
-              const result = await signUp.verifications.sendEmailCode();
-              if (result.error) {
-                setMessage(result.error.message ?? 'Could not resend the code.');
-              } else {
-                setMessage('A fresh code has been sent to your email.');
-              }
-            }}
-            style={styles.resendButton}
-          >
-            <Feather name="refresh-cw" size={13} color={colors.primary} />
-            <Text style={[styles.resendText, { color: colors.primary }]}>Send a new code</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <>
-          {/* ── Role Selector ── */}
-          <View style={styles.roleBlock}>
+      {/* ── Role Selector ── */}
+      <View style={styles.roleBlock}>
             <Text style={[styles.fieldLabel, { color: colors.foreground }]}>I want to use TalentIQ to:</Text>
             <View style={styles.roleChoiceRow}>
               <Pressable
@@ -734,8 +567,6 @@ function SignUpSection({ onSwitchToSignIn }: { onSwitchToSignIn: () => void }) {
               </View>
             </View>
           )}
-        </>
-      )}
 
       {message ? (
         <View style={[styles.messageCard, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
@@ -746,14 +577,14 @@ function SignUpSection({ onSwitchToSignIn }: { onSwitchToSignIn: () => void }) {
 
       <Pressable
         testID="signup-submit"
-        disabled={isVerifying ? code.length < 4 : !email.includes('@') || password.length < 8 || sendingCode}
-        onPress={isVerifying ? verify : submit}
+        disabled={!email.includes('@') || password.length < 6 || fullName.trim().length < 2 || sendingCode}
+        onPress={submit}
         style={({ pressed }) => [
           styles.submitButton,
           {
             backgroundColor: colors.primary,
             opacity:
-              (isVerifying ? code.length < 4 : !email.includes('@') || password.length < 8 || sendingCode)
+              !email.includes('@') || password.length < 6 || fullName.trim().length < 2 || sendingCode
                 ? 0.55
                 : pressed
                   ? 0.86
@@ -761,14 +592,14 @@ function SignUpSection({ onSwitchToSignIn }: { onSwitchToSignIn: () => void }) {
           },
         ]}
       >
-        {sendingCode || fetchStatus === 'fetching' ? (
+        {sendingCode ? (
           <ActivityIndicator color={colors.primaryForeground} />
         ) : (
           <>
             <Text style={[styles.submitButtonText, { color: colors.primaryForeground }]}>
-              {isVerifying ? 'Verify & Get Started' : 'Create Account'}
+              Create Account
             </Text>
-            <Feather name={isVerifying ? 'check' : 'arrow-right'} size={17} color={colors.primaryForeground} />
+            <Feather name="arrow-right" size={17} color={colors.primaryForeground} />
           </>
         )}
       </Pressable>
@@ -1154,38 +985,6 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: 14,
-  },
-  demoSection: {
-    gap: 8,
-    paddingTop: 8,
-  },
-  demoHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  demoTitle: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 10,
-    letterSpacing: 1,
-  },
-  demoButtonRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  demoChip: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  demoChipText: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 12,
   },
   dividerRow: {
     flexDirection: 'row',

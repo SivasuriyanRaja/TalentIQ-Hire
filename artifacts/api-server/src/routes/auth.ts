@@ -217,7 +217,7 @@ async function handleLogin(req: Request, res: Response) {
     // Check Mongo if not found locally or to sync
     if (!targetUser) {
       try {
-        const mongoUser = await User.findOne({ email: cleanEmail }).lean();
+        const mongoUser = (await User.findOne({ email: cleanEmail }).lean()) as any;
         if (mongoUser) {
           const [salt, hash] = (mongoUser.passwordHash || "").split(":");
           targetUser = {
@@ -227,7 +227,7 @@ async function handleLogin(req: Request, res: Response) {
             salt: salt || "",
             hash: hash || "",
             role: (mongoUser.role as any) || "candidate",
-            createdAt: mongoUser.createdAt?.toISOString() || new Date().toISOString(),
+            createdAt: mongoUser.createdAt?.toISOString?.() || new Date().toISOString(),
           };
           localUsers[mongoUser.userId] = targetUser;
           saveLocalUsers(localUsers);
@@ -299,7 +299,7 @@ router.get("/auth/me", async (req: Request, res: Response) => {
 
     if (!user) {
       try {
-        const mongoUser = await User.findOne({ userId }).lean();
+        const mongoUser = (await User.findOne({ userId }).lean()) as any;
         if (mongoUser) {
           user = {
             userId: mongoUser.userId,
@@ -308,7 +308,7 @@ router.get("/auth/me", async (req: Request, res: Response) => {
             salt: "",
             hash: "",
             role: (mongoUser.role as any) || "candidate",
-            createdAt: mongoUser.createdAt?.toISOString() || "",
+            createdAt: mongoUser.createdAt?.toISOString?.() || "",
           };
         }
       } catch {}

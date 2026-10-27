@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useMemo } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   ClerkProvider as ExpoClerkProvider,
   ClerkLoaded as ExpoClerkLoaded,
@@ -9,6 +10,7 @@ import {
   useSignUp as useExpoSignUp,
   type TokenCache,
 } from '@clerk/expo';
+import { getApiEndpoint } from '@/utils/apiConfig';
 
 /**
  * Validates whether a Clerk publishable key is a genuine, active key
@@ -137,16 +139,51 @@ const defaultMockValue: AuthBridgeContextValue = {
     signIn: {
       status: 'needs_identifier',
       supportedSecondFactors: [],
-      password: async () => ({
-        error: {
-          message:
-            'Clerk is running in Local Dev/Demo mode. Tap "Candidate Demo" or "Recruiter Demo" below to sign in instantly!',
-        },
-      }),
+      password: async ({ emailAddress, password }: { emailAddress?: string; password?: string }) => {
+        try {
+          const endpoint = getApiEndpoint('/auth/sign-in');
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: emailAddress, password }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) {
+            return {
+              error: {
+                message: data.error || 'Invalid email or password. Please try again.',
+              },
+            };
+          }
+          if (data.token) {
+            await AsyncStorage.setItem('talentiq.auth.token', data.token);
+          }
+          if (data.user) {
+            await AsyncStorage.setItem(
+              'talentiq.auth.session',
+              JSON.stringify({
+                id: data.user.id || data.user.userId,
+                email: data.user.email,
+                name: data.user.name,
+                role: data.user.role || 'candidate',
+                isDemo: false,
+              }),
+            );
+            await AsyncStorage.setItem('talentiq.auth.mode', 'authenticated');
+          }
+          return { error: undefined };
+        } catch (err: any) {
+          return {
+            error: {
+              message: err?.message || 'Could not connect to authentication server.',
+            },
+          };
+        }
+      },
       mfa: {
         sendEmailCode: async () => ({ error: null }),
         verifyEmailCode: async () => ({
-          error: { message: 'MFA is not needed in Demo mode.' },
+          error: { message: 'MFA is not needed.' },
         }),
       },
       finalize: async () => {},
@@ -158,19 +195,65 @@ const defaultMockValue: AuthBridgeContextValue = {
     fetchStatus: 'idle',
     errors: { fields: {} },
     signUp: {
-      status: 'missing_requirements',
+      status: 'complete',
       unverifiedFields: [],
       missingFields: [],
-      password: async () => ({
-        error: {
-          message:
-            'Clerk is running in Local Dev/Demo mode. Use the Demo buttons on the Sign In tab to get started!',
-        },
-      }),
+      password: async ({
+        emailAddress,
+        password,
+        firstName,
+        lastName,
+      }: {
+        emailAddress?: string;
+        password?: string;
+        firstName?: string;
+        lastName?: string;
+      }) => {
+        try {
+          const name = [firstName, lastName].filter(Boolean).join(' ') || 'Candidate';
+          const endpoint = getApiEndpoint('/auth/sign-up');
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, email: emailAddress, password, role: 'candidate' }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) {
+            return {
+              error: {
+                message: data.error || 'Failed to create account. Please check your details.',
+              },
+            };
+          }
+          if (data.token) {
+            await AsyncStorage.setItem('talentiq.auth.token', data.token);
+          }
+          if (data.user) {
+            await AsyncStorage.setItem(
+              'talentiq.auth.session',
+              JSON.stringify({
+                id: data.user.id || data.user.userId,
+                email: data.user.email,
+                name: data.user.name,
+                role: data.user.role || 'candidate',
+                isDemo: false,
+              }),
+            );
+            await AsyncStorage.setItem('talentiq.auth.mode', 'authenticated');
+          }
+          return { error: undefined };
+        } catch (err: any) {
+          return {
+            error: {
+              message: err?.message || 'Could not connect to authentication server.',
+            },
+          };
+        }
+      },
       verifications: {
         sendEmailCode: async () => ({ error: null }),
         verifyEmailCode: async () => ({
-          error: { message: 'Verification is not needed in Demo mode.' },
+          error: null,
         }),
       },
       finalize: async () => {},

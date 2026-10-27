@@ -33,6 +33,7 @@ import {
   UserRole,
 } from '@/data/talentiq';
 import { useCloudSync } from '@/hooks/useCloudSync';
+import { getApiEndpoint } from '@/utils/apiConfig';
 
 export interface AuthUser {
   id: string;
@@ -126,6 +127,16 @@ export interface TalentIQContextValue extends TalentIQState {
     extractedSkills: string[];
   }>;
   syncNow: () => Promise<void>;
+  registerWithCredentials: (params: {
+    name: string;
+    email: string;
+    password: string;
+    role?: UserRole;
+  }) => Promise<{ success: boolean; error?: string }>;
+  loginWithCredentials: (params: {
+    email: string;
+    password: string;
+  }) => Promise<{ success: boolean; error?: string }>;
   loginDemo: (role: 'candidate' | 'recruiter') => Promise<void>;
   loginGuest: (role?: UserRole) => Promise<void>;
   logout: () => Promise<void>;
@@ -245,6 +256,14 @@ export function TalentIQProvider({
               ...defaultState,
               ...parsed,
               role: authUser?.role ?? parsed.role ?? 'candidate',
+              profile: {
+                ...defaultState.profile,
+                ...parsed.profile,
+                name:
+                  authUser && !authUser.isDemo && authUser.name
+                    ? authUser.name
+                    : parsed.profile?.name || defaultState.profile.name,
+              },
             });
           } catch {
             setState(defaultState);
@@ -261,6 +280,15 @@ export function TalentIQProvider({
                 authUser.role === 'candidate'
                   ? candidateDemoProfile
                   : recruiterDemoProfile,
+            });
+          } else if (authUser && !authUser.isDemo) {
+            setState({
+              ...defaultState,
+              role: authUser.role,
+              profile: {
+                ...defaultState.profile,
+                name: authUser.name || defaultState.profile.name,
+              },
             });
           } else {
             setState(defaultState);
@@ -389,6 +417,148 @@ export function TalentIQProvider({
 
   // ── Authentication Actions ────────────────────────────────────────────────
 
+  const registerWithCredentials = useCallback(
+    async ({
+      name,
+      email,
+      password,
+      role = 'candidate',
+    }: {
+      name: string;
+      email: string;
+      password: string;
+      role?: UserRole;
+    }): Promise<{ success: boolean; error?: string }> => {
+      try {
+        const endpoint = getApiEndpoint('/auth/sign-up');
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password, role }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          return {
+            success: false,
+            error: data.error || 'Failed to create account. Please check your details.',
+          };
+        }
+
+        const newUser: AuthUser = {
+          id: data.user.id || data.user.userId,
+          email: data.user.email,
+          name: data.user.name,
+          role: (data.user.role as UserRole) || role,
+          isDemo: false,
+        };
+
+        setAuthUser(newUser);
+        setAuthMode('authenticated');
+        setState((current) => ({
+          ...current,
+          role: newUser.role,
+          profile: {
+            ...current.profile,
+            name: newUser.name,
+          },
+        }));
+
+        await Promise.all([
+          AsyncStorage.setItem('talentiq.auth.session', JSON.stringify(newUser)),
+          AsyncStorage.setItem('talentiq.auth.mode', 'authenticated'),
+          data.token
+            ? AsyncStorage.setItem('talentiq.auth.token', data.token)
+            : Promise.resolve(),
+        ]);
+
+        try {
+          if (router.canDismiss()) {
+            router.dismissAll();
+          }
+        } catch {}
+        router.replace('/(tabs)');
+        return { success: true };
+      } catch (err: any) {
+        return {
+          success: false,
+          error:
+            err?.message ||
+            'Network error connecting to TalentIQ server. Please try again.',
+        };
+      }
+    },
+    [router],
+  );
+
+  const loginWithCredentials = useCallback(
+    async ({
+      email,
+      password,
+    }: {
+      email: string;
+      password: string;
+    }): Promise<{ success: boolean; error?: string }> => {
+      try {
+        const endpoint = getApiEndpoint('/auth/sign-in');
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          return {
+            success: false,
+            error: data.error || 'Invalid email or password. Please try again.',
+          };
+        }
+
+        const loggedUser: AuthUser = {
+          id: data.user.id || data.user.userId,
+          email: data.user.email,
+          name: data.user.name,
+          role: (data.user.role as UserRole) || 'candidate',
+          isDemo: false,
+        };
+
+        setAuthUser(loggedUser);
+        setAuthMode('authenticated');
+        setState((current) => ({
+          ...current,
+          role: loggedUser.role,
+          profile: {
+            ...current.profile,
+            name: loggedUser.name || current.profile.name,
+          },
+        }));
+
+        await Promise.all([
+          AsyncStorage.setItem('talentiq.auth.session', JSON.stringify(loggedUser)),
+          AsyncStorage.setItem('talentiq.auth.mode', 'authenticated'),
+          data.token
+            ? AsyncStorage.setItem('talentiq.auth.token', data.token)
+            : Promise.resolve(),
+        ]);
+
+        try {
+          if (router.canDismiss()) {
+            router.dismissAll();
+          }
+        } catch {}
+        router.replace('/(tabs)');
+        return { success: true };
+      } catch (err: any) {
+        return {
+          success: false,
+          error:
+            err?.message ||
+            'Network error connecting to TalentIQ server. Please try again.',
+        };
+      }
+    },
+    [router],
+  );
+
   const loginDemo = useCallback(
     async (demoRole: 'candidate' | 'recruiter') => {
       const demoUser: AuthUser = {
@@ -463,6 +633,7 @@ export function TalentIQProvider({
       await AsyncStorage.multiRemove([
         'talentiq.auth.session',
         'talentiq.auth.mode',
+        'talentiq.auth.token',
       ]);
     } catch {}
 
@@ -665,6 +836,8 @@ export function TalentIQProvider({
       setCandidateStatus,
       uploadResume,
       syncNow,
+      registerWithCredentials,
+      loginWithCredentials,
       loginDemo,
       loginGuest,
       logout,
@@ -688,6 +861,8 @@ export function TalentIQProvider({
       setCandidateStatus,
       uploadResume,
       syncNow,
+      registerWithCredentials,
+      loginWithCredentials,
       loginDemo,
       loginGuest,
       logout,
