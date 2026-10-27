@@ -398,12 +398,25 @@ router.post("/talentiq/assessments/evaluate", requireSignedIn, async (req, res) 
       ? Math.max(0, body.timeSpentSeconds)
       : 0;
 
+  const speedAnomalies =
+    typeof body.speedAnomalies === "number" && Number.isFinite(body.speedAnomalies)
+      ? Math.max(0, body.speedAnomalies)
+      : 0;
+  const clipboardViolations =
+    typeof body.clipboardViolations === "number" && Number.isFinite(body.clipboardViolations)
+      ? Math.max(0, body.clipboardViolations)
+      : 0;
+  const identityPledgeSigned = body.identityPledgeSigned !== false;
+
   const evaluation = evaluateAssessment(
     body.questions as AssessmentQuestion[],
     body.userAnswers as Record<number, string>,
     focusLosses,
     timeSpentSeconds,
     body.jobTitle,
+    speedAnomalies,
+    clipboardViolations,
+    identityPledgeSigned,
   );
 
   res.json(evaluation);

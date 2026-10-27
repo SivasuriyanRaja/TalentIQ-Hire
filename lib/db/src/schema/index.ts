@@ -279,6 +279,12 @@ export interface ICloudAssessmentAttempt extends Document {
   total: number;
   percentage: number;
   focusLosses: number;
+  speedAnomalies: number;
+  clipboardViolations: number;
+  proxyRiskScore: number;
+  proxyRiskLevel: "LOW" | "MEDIUM" | "HIGH";
+  identityPledgeSigned: boolean;
+  watermarkToken?: string;
   timeSpentSeconds: number;
   feedback: string;
   skillsBreakdown: Array<{ skill: string; score: number }>;
@@ -299,6 +305,16 @@ const CloudAssessmentAttemptSchema = new Schema<ICloudAssessmentAttempt>(
     total: { type: Number, required: true, min: 1 },
     percentage: { type: Number, required: true, min: 0, max: 100 },
     focusLosses: { type: Number, required: true, min: 0, default: 0 },
+    speedAnomalies: { type: Number, required: true, min: 0, default: 0 },
+    clipboardViolations: { type: Number, required: true, min: 0, default: 0 },
+    proxyRiskScore: { type: Number, required: true, min: 0, max: 100, default: 0 },
+    proxyRiskLevel: {
+      type: String,
+      enum: ["LOW", "MEDIUM", "HIGH"],
+      default: "LOW",
+    },
+    identityPledgeSigned: { type: Boolean, default: true },
+    watermarkToken: { type: String, maxlength: 120 },
     timeSpentSeconds: { type: Number, default: 0 },
     feedback: { type: String, default: "" },
     skillsBreakdown: [

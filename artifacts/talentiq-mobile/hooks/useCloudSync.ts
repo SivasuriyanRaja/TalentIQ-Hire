@@ -334,6 +334,12 @@ export function useCloudSync(activeUserId?: string | null) {
       score: number;
       total: number;
       focusLosses: number;
+      speedAnomalies?: number;
+      clipboardViolations?: number;
+      proxyRiskScore?: number;
+      proxyRiskLevel?: 'LOW' | 'MEDIUM' | 'HIGH';
+      identityPledgeSigned?: boolean;
+      watermarkToken?: string;
       timeSpentSeconds?: number;
       feedback?: string;
       skillsBreakdown?: Array<{ skill: string; score: number }>;

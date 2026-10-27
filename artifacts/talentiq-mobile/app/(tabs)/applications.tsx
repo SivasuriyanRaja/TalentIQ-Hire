@@ -159,8 +159,32 @@ export default function ApplicationsScreen() {
                 </View>
                 <View style={styles.verifiedBadge}>
                   <Feather name="shield" size={13} color="#FFFFFF" />
-                  <Text style={styles.verifiedBadgeText}>PROCTORED</Text>
+                  <Text style={styles.verifiedBadgeText}>ANTI-PROXY 100%</Text>
                 </View>
+              </View>
+
+              {/* Anti-Proxy Security Clearance Box */}
+              <View style={[styles.antiProxyRecruiterBox, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+                <View style={styles.antiProxyHeaderMini}>
+                  <Feather name="shield" size={14} color="#10B981" />
+                  <Text style={[styles.antiProxyHeaderMiniText, { color: colors.foreground }]}>
+                    Anti-Proxy Proctoring Audit: Low Risk (Authentic)
+                  </Text>
+                </View>
+                <View style={styles.antiProxyRowMini}>
+                  <Text style={[styles.antiProxyStatText, { color: colors.mutedForeground }]}>
+                    Focus Switches: <Text style={{ color: colors.foreground, fontFamily: 'Inter_700Bold' }}>0</Text>
+                  </Text>
+                  <Text style={[styles.antiProxyStatText, { color: colors.mutedForeground }]}>
+                    Speed Flags: <Text style={{ color: colors.foreground, fontFamily: 'Inter_700Bold' }}>0</Text>
+                  </Text>
+                  <Text style={[styles.antiProxyStatText, { color: colors.mutedForeground }]}>
+                    Copy Attempts: <Text style={{ color: colors.foreground, fontFamily: 'Inter_700Bold' }}>0</Text>
+                  </Text>
+                </View>
+                <Text style={[styles.proctorNoticeText, { color: colors.mutedForeground, marginTop: 2 }]}>
+                  Candidate completed single-window test independently. Anti-Proxy Honor Pledge signed.
+                </Text>
               </View>
 
               <View style={styles.modalSkillsBlock}>
@@ -185,13 +209,6 @@ export default function ApplicationsScreen() {
                     </View>
                   </View>
                 ))}
-              </View>
-
-              <View style={[styles.proctorNotice, { backgroundColor: colors.secondary }]}>
-                <Feather name="check-circle" size={14} color={colors.primary} />
-                <Text style={[styles.proctorNoticeText, { color: colors.foreground }]}>
-                  0 focus changes during 12-minute proctored check. Candidate is authentic.
-                </Text>
               </View>
 
               <PrimaryButton
@@ -296,16 +313,59 @@ export default function ApplicationsScreen() {
                     {attempt.assessmentTitle ?? job?.title ?? 'Role Skill Assessment'}
                   </Text>
                   <Text style={[styles.candidateSub, { color: colors.mutedForeground }]}>
-                    {attempt.score}/{attempt.total} Correct ({percentage}%) ·{' '}
-                    {attempt.focusLosses === 0
-                      ? 'Verified Authentic (0 switches)'
-                      : `${attempt.focusLosses} focus switches`}
+                    {attempt.score}/{attempt.total} Correct ({percentage}%)
                   </Text>
-                  {attempt.readinessRating ? (
-                    <Text style={[styles.attemptRating, { color: colors.primary }]}>
-                      {attempt.readinessRating}
-                    </Text>
-                  ) : null}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
+                    <View
+                      style={[
+                        styles.miniProxyBadge,
+                        {
+                          backgroundColor:
+                            attempt.proxyRiskLevel === 'HIGH'
+                              ? '#FFEBE6'
+                              : attempt.proxyRiskLevel === 'MEDIUM'
+                                ? '#FEF3C7'
+                                : '#D1FAE5',
+                        },
+                      ]}
+                    >
+                      <Feather
+                        name={attempt.proxyRiskLevel === 'HIGH' ? 'alert-triangle' : 'shield'}
+                        size={10}
+                        color={
+                          attempt.proxyRiskLevel === 'HIGH'
+                            ? '#D85D49'
+                            : attempt.proxyRiskLevel === 'MEDIUM'
+                              ? '#B45309'
+                              : '#065F46'
+                        }
+                      />
+                      <Text
+                        style={[
+                          styles.miniProxyText,
+                          {
+                            color:
+                              attempt.proxyRiskLevel === 'HIGH'
+                                ? '#D85D49'
+                                : attempt.proxyRiskLevel === 'MEDIUM'
+                                  ? '#B45309'
+                                  : '#065F46',
+                          },
+                        ]}
+                      >
+                        {attempt.proxyRiskLevel === 'HIGH'
+                          ? 'HIGH PROXY RISK'
+                          : attempt.proxyRiskLevel === 'MEDIUM'
+                            ? 'FLAGGED BLURS'
+                            : '0-PROXY VERIFIED'}
+                      </Text>
+                    </View>
+                    {attempt.readinessRating ? (
+                      <Text style={[styles.attemptRating, { color: colors.primary }]}>
+                        {attempt.readinessRating}
+                      </Text>
+                    ) : null}
+                  </View>
                 </View>
               </Card>
             );
@@ -483,5 +543,43 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
     fontSize: 11,
     lineHeight: 16,
+  },
+  antiProxyRecruiterBox: {
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 6,
+  },
+  antiProxyHeaderMini: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  antiProxyHeaderMiniText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 12,
+  },
+  antiProxyRowMini: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 2,
+  },
+  antiProxyStatText: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 10.5,
+  },
+  miniProxyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  miniProxyText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 8.5,
+    letterSpacing: 0.4,
   },
 });

@@ -453,14 +453,27 @@ export function generateDynamicMatchAnalysis(
   };
 }
 
-// ── Assessment Evaluator ──────────────────────────────────────────────────────
+// ── Anti-Proxy & Assessment Evaluator ─────────────────────────────────────────
+
+export interface AntiProxyAudit {
+  proxyRiskScore: number; // 0 - 100
+  proxyRiskLevel: "LOW" | "MEDIUM" | "HIGH";
+  focusLosses: number;
+  speedAnomalies: number;
+  clipboardViolations: number;
+  identityPledgeSigned: boolean;
+  verdict: string;
+}
 
 export interface EvaluationResult {
   score: number;
   total: number;
   percentage: number;
   readinessRating: "Strong Hire" | "Solid Contender" | "Needs Practice";
-  integrityStatus: "Verified Authentic" | "Monitored (Minor Focus Changes)" | "Flagged Review";
+  integrityStatus: "Verified Authentic" | "Monitored (Minor Focus Changes)" | "Flagged Review" | "Flagged: High Proxy Risk";
+  proxyRiskScore: number;
+  proxyRiskLevel: "LOW" | "MEDIUM" | "HIGH";
+  antiProxyAudit: AntiProxyAudit;
   skillsBreakdown: Array<{ skill: string; score: number }>;
   feedback: string;
   strengths: string[];
@@ -470,9 +483,12 @@ export interface EvaluationResult {
 export function evaluateAssessment(
   questions: AssessmentQuestion[],
   userAnswers: Record<number, string>,
-  focusLosses: number,
-  timeSpentSeconds: number,
-  jobTitle: string,
+  focusLosses: number = 0,
+  timeSpentSeconds: number = 0,
+  jobTitle: string = "Role",
+  speedAnomalies: number = 0,
+  clipboardViolations: number = 0,
+  identityPledgeSigned: boolean = true,
 ): EvaluationResult {
   const total = questions.length;
   let correctCount = 0;
@@ -498,17 +514,51 @@ export function evaluateAssessment(
         ? "Solid Contender"
         : "Needs Practice";
 
+  // Anti-Proxy Risk Calculation
+  // Flags: focus changes (+20), speed anomalies (+25), clipboard attempts (+20), missing pledge (+35)
+  let rawRisk =
+    (focusLosses * 20) +
+    (speedAnomalies * 25) +
+    (clipboardViolations * 20) +
+    (!identityPledgeSigned ? 35 : 0);
+
+  const proxyRiskScore = Math.max(0, Math.min(100, Math.round(rawRisk)));
+
+  const proxyRiskLevel: "LOW" | "MEDIUM" | "HIGH" =
+    proxyRiskScore >= 50
+      ? "HIGH"
+      : proxyRiskScore >= 20
+        ? "MEDIUM"
+        : "LOW";
+
   const integrityStatus =
-    focusLosses === 0
-      ? "Verified Authentic"
-      : focusLosses <= 2
+    proxyRiskLevel === "HIGH"
+      ? "Flagged: High Proxy Risk"
+      : proxyRiskLevel === "MEDIUM"
         ? "Monitored (Minor Focus Changes)"
-        : "Flagged Review";
+        : "Verified Authentic";
+
+  const antiProxyVerdict =
+    proxyRiskLevel === "LOW"
+      ? "Candidate verified genuine. Zero unauthorized focus shifts, natural response pacing, and authenticated identity pledge."
+      : proxyRiskLevel === "MEDIUM"
+        ? `Moderate anomalies noted: ${focusLosses} focus switches / ${speedAnomalies} speed flags. Candidate should be validated in technical interview.`
+        : `High proxy risk detected (${proxyRiskScore}/100): ${focusLosses} focus losses, ${speedAnomalies} speed anomalies, ${clipboardViolations} clipboard interceptions. Independent assessment could not be certified.`;
+
+  const antiProxyAudit: AntiProxyAudit = {
+    proxyRiskScore,
+    proxyRiskLevel,
+    focusLosses,
+    speedAnomalies,
+    clipboardViolations,
+    identityPledgeSigned,
+    verdict: antiProxyVerdict,
+  };
 
   const strengths = [
     `Scored ${percentage}% on role-specific competency questions`,
-    correctCount > 0 ? "Demonstrated clear grasp of architectural trade-offs" : "Completed the assessment within the designated time limit",
-    focusLosses === 0 ? "Zero focus changes during assessment — 100% focused session" : "High perseverance across difficult questions",
+    correctCount > 0 ? "Demonstrated clear grasp of architectural trade-offs" : "Completed the assessment within designated time limits",
+    proxyRiskLevel === "LOW" ? "100% genuine single-window test session — zero proxy indicators" : "Completed all required questions",
   ];
 
   const growthAreas =
@@ -521,15 +571,15 @@ export function evaluateAssessment(
 
   const feedback =
     percentage >= 80
-      ? `Excellent demonstration of domain mastery for ${jobTitle}. The candidate exhibited comprehensive knowledge of best practices and system performance.`
+      ? `Excellent demonstration of domain mastery for ${jobTitle}. The candidate exhibited comprehensive knowledge of best practices under proctored anti-proxy conditions.`
       : percentage >= 60
         ? `Solid foundational grasp of key concepts for ${jobTitle}. With targeted practice on edge cases, this candidate will be well-prepared for technical interviews.`
         : `Demonstrates potential but needs reinforcement in core ${jobTitle} architectural principles. Review the detailed explanations provided below to accelerate growth.`;
 
   const skillsBreakdown = [
     { skill: "Domain Knowledge", score: percentage },
-    { skill: "Problem Solving", score: Math.min(100, percentage + (focusLosses === 0 ? 5 : -5)) },
-    { skill: "Focus & Integrity", score: Math.max(40, 100 - focusLosses * 15) },
+    { skill: "Problem Solving", score: Math.min(100, Math.max(20, percentage + (focusLosses === 0 ? 5 : -5))) },
+    { skill: "Focus & Integrity", score: Math.max(10, 100 - proxyRiskScore) },
   ];
 
   return {
@@ -538,6 +588,9 @@ export function evaluateAssessment(
     percentage,
     readinessRating,
     integrityStatus,
+    proxyRiskScore,
+    proxyRiskLevel,
+    antiProxyAudit,
     skillsBreakdown,
     feedback,
     strengths,

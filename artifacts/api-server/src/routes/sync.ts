@@ -592,6 +592,12 @@ router.post("/sync/assessments", requireAuth, async (req, res) => {
   const total = Math.max(1, body.total);
   const percentage = Math.round((score / total) * 100);
   const focusLosses = typeof body.focusLosses === "number" ? Math.max(0, body.focusLosses) : 0;
+  const speedAnomalies = typeof body.speedAnomalies === "number" ? Math.max(0, body.speedAnomalies) : 0;
+  const clipboardViolations = typeof body.clipboardViolations === "number" ? Math.max(0, body.clipboardViolations) : 0;
+  const proxyRiskScore = typeof body.proxyRiskScore === "number" ? Math.max(0, Math.min(100, Math.round(body.proxyRiskScore))) : 0;
+  const proxyRiskLevel = body.proxyRiskLevel === "HIGH" || body.proxyRiskLevel === "MEDIUM" ? body.proxyRiskLevel : "LOW";
+  const identityPledgeSigned = body.identityPledgeSigned !== false;
+  const watermarkToken = typeof body.watermarkToken === "string" ? body.watermarkToken.slice(0, 120) : undefined;
   const timeSpentSeconds = typeof body.timeSpentSeconds === "number" ? Math.max(0, body.timeSpentSeconds) : 0;
   const candidateName = typeof body.candidateName === "string" ? body.candidateName.slice(0, 120) : "Candidate";
   const jobTitle = typeof body.jobTitle === "string" ? body.jobTitle.slice(0, 160) : "Role";
@@ -616,6 +622,12 @@ router.post("/sync/assessments", requireAuth, async (req, res) => {
       total,
       percentage,
       focusLosses,
+      speedAnomalies,
+      clipboardViolations,
+      proxyRiskScore,
+      proxyRiskLevel,
+      identityPledgeSigned,
+      watermarkToken,
       timeSpentSeconds,
       feedback,
       skillsBreakdown,

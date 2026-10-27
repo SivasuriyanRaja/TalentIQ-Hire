@@ -57,6 +57,12 @@ export interface AssessmentAttempt {
   total: number;
   percentage?: number;
   focusLosses: number;
+  speedAnomalies?: number;
+  clipboardViolations?: number;
+  proxyRiskScore?: number;
+  proxyRiskLevel?: 'LOW' | 'MEDIUM' | 'HIGH';
+  identityPledgeSigned?: boolean;
+  watermarkToken?: string;
   timeSpentSeconds?: number;
   readinessRating?: string;
   integrityStatus?: string;

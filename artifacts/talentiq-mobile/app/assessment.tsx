@@ -22,12 +22,25 @@ import { useColors } from '@/hooks/useColors';
 import { useTalentIQ } from '@/state/TalentIQContext';
 import { getApiEndpoint } from '@/utils/apiConfig';
 
+interface AntiProxyAudit {
+  proxyRiskScore: number;
+  proxyRiskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  focusLosses: number;
+  speedAnomalies: number;
+  clipboardViolations: number;
+  identityPledgeSigned: boolean;
+  verdict: string;
+}
+
 interface EvaluationPayload {
   score: number;
   total: number;
   percentage: number;
   readinessRating: string;
   integrityStatus: string;
+  proxyRiskScore?: number;
+  proxyRiskLevel?: 'LOW' | 'MEDIUM' | 'HIGH';
+  antiProxyAudit?: AntiProxyAudit;
   skillsBreakdown: Array<{ skill: string; score: number }>;
   feedback: string;
   strengths: string[];
@@ -56,6 +69,15 @@ export default function AssessmentScreen() {
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [markedForReview, setMarkedForReview] = useState<Set<number>>(new Set());
 
+  // Anti-Proxy & Proctoring state
+  const [identityPledgeSigned, setIdentityPledgeSigned] = useState<boolean>(false);
+  const [showPledgeModal, setShowPledgeModal] = useState<boolean>(false);
+  const [speedAnomalies, setSpeedAnomalies] = useState<number>(0);
+  const [clipboardViolations, setClipboardViolations] = useState<number>(0);
+  const [watermarkToken, setWatermarkToken] = useState<string>('');
+  const [integrityToastMessage, setIntegrityToastMessage] = useState<string>('');
+  const questionStartTimeRef = useRef<number>(Date.now());
+
   // Proctoring & timer state
   const [secondsRemaining, setSecondsRemaining] = useState<number>(0);
   const [totalSeconds, setTotalSeconds] = useState<number>(0);
@@ -71,15 +93,22 @@ export default function AssessmentScreen() {
   const [reviewExpanded, setReviewExpanded] = useState<boolean>(true);
   const [message, setMessage] = useState<string>('');
 
-  // ── Focus Loss & Proctoring Monitoring ────────────────────────────────────
+  // ── Focus Loss & Anti-Proxy Monitoring ────────────────────────────────────
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'inactive' || nextState === 'background') {
         if (quiz && !evaluation) {
           setFocusLosses((prev) => {
             const next = prev + 1;
+            const alertMsg =
+              next === 1
+                ? '⚠️ Focus Lost (Strike 1): Window switch detected. Logged for recruiter audit.'
+                : next === 2
+                  ? '⚠️ Focus Lost (Strike 2): Continued tab switches increase Proxy Risk score.'
+                  : `🚨 Anti-Proxy Alert (Strike ${next}): High external activity detected.`;
+            setIntegrityToastMessage(alertMsg);
             setShowIntegrityToast(true);
-            setTimeout(() => setShowIntegrityToast(false), 4500);
+            setTimeout(() => setShowIntegrityToast(false), 5000);
             return next;
           });
         }
@@ -119,10 +148,37 @@ export default function AssessmentScreen() {
     );
   };
 
+  // ── Anti-Copy / Clipboard Interception ───────────────────────────────────
+  const handleClipboardAttempt = () => {
+    setClipboardViolations((prev) => prev + 1);
+    setIntegrityToastMessage('🔒 Anti-Proxy Shield: Question copying is disabled. Incident logged.');
+    setShowIntegrityToast(true);
+    setTimeout(() => setShowIntegrityToast(false), 4500);
+  };
+
+  // ── Answer Selection with Speed Anomaly Detection ────────────────────────
+  const handleSelectOption = (option: string) => {
+    const elapsedMs = Date.now() - questionStartTimeRef.current;
+    if (elapsedMs < 2000 && !answers[currentIdx]) {
+      // Answered in under 2 seconds: potential proxy script / bot automation
+      setSpeedAnomalies((prev) => prev + 1);
+    }
+    setAnswers((prev) => ({ ...prev, [currentIdx]: option }));
+  };
+
+  const handleGoToQuestion = (idx: number) => {
+    questionStartTimeRef.current = Date.now();
+    setCurrentIdx(idx);
+  };
+
   // ── Generate Assessment ───────────────────────────────────────────────────
   const generate = async () => {
     if (!isUserSignedIn) {
       router.push('/(auth)/sign-in');
+      return;
+    }
+    if (!identityPledgeSigned) {
+      setMessage('Please sign the Anti-Proxy Honor Pledge to begin.');
       return;
     }
     if (!job) return;
@@ -139,12 +195,25 @@ export default function AssessmentScreen() {
       });
 
       if (response && response.questions?.length > 0) {
-        setQuiz(response);
+        // Anti-Collusion: dynamically shuffle options per attempt so options cannot be copied across candidates
+        const randomizedQuestions = (response.questions || []).map((q) => {
+          const shuffledOpts = [...q.options].sort(() => Math.random() - 0.5);
+          return { ...q, options: shuffledOpts };
+        });
+
+        // Generate tamper-resistant Anti-Proxy watermark token
+        const token = `APX-${Date.now().toString(36).slice(-4).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        setWatermarkToken(token);
+
+        setQuiz({ ...response, questions: randomizedQuestions });
         setAnswers({});
         setCurrentIdx(0);
         setFocusLosses(0);
+        setSpeedAnomalies(0);
+        setClipboardViolations(0);
         setMarkedForReview(new Set());
         setEvaluation(null);
+        questionStartTimeRef.current = Date.now();
         const durationSec = (response.durationMinutes || 15) * 60;
         setSecondsRemaining(durationSec);
         setTotalSeconds(durationSec);
@@ -179,7 +248,7 @@ export default function AssessmentScreen() {
     const total = quiz.questions.length;
     const percentage = Math.round((correctCount / total) * 100);
 
-    // Call evaluate API with local fallback
+    // Call evaluate API with anti-proxy parameters
     let evalResult: EvaluationPayload;
     try {
       const evalRes = await fetch(getApiEndpoint('/talentiq/assessments/evaluate'), {
@@ -194,6 +263,9 @@ export default function AssessmentScreen() {
           focusLosses,
           timeSpentSeconds,
           jobTitle: job.title,
+          speedAnomalies,
+          clipboardViolations,
+          identityPledgeSigned,
         }),
       });
 
@@ -211,12 +283,17 @@ export default function AssessmentScreen() {
             ? 'Solid Contender'
             : 'Needs Development';
 
+      const rawRisk = (focusLosses * 20) + (speedAnomalies * 25) + (clipboardViolations * 20);
+      const proxyRiskScore = Math.max(0, Math.min(100, rawRisk));
+      const proxyRiskLevel: 'LOW' | 'MEDIUM' | 'HIGH' =
+        proxyRiskScore >= 50 ? 'HIGH' : proxyRiskScore >= 20 ? 'MEDIUM' : 'LOW';
+
       const integrityStatus =
-        focusLosses === 0
-          ? 'Verified Authentic (0 focus switches)'
-          : focusLosses <= 2
+        proxyRiskLevel === 'HIGH'
+          ? 'Flagged: High Proxy Risk'
+          : proxyRiskLevel === 'MEDIUM'
             ? `Monitored (${focusLosses} focus switches)`
-            : `Flagged Review (${focusLosses} focus switches)`;
+            : 'Verified Authentic (0-Proxy Risk)';
 
       evalResult = {
         score: correctCount,
@@ -224,16 +301,32 @@ export default function AssessmentScreen() {
         percentage,
         readinessRating,
         integrityStatus,
+        proxyRiskScore,
+        proxyRiskLevel,
+        antiProxyAudit: {
+          proxyRiskScore,
+          proxyRiskLevel,
+          focusLosses,
+          speedAnomalies,
+          clipboardViolations,
+          identityPledgeSigned,
+          verdict:
+            proxyRiskLevel === 'LOW'
+              ? 'Candidate certified genuine. Single-window locked session with zero proxy anomalies.'
+              : proxyRiskLevel === 'MEDIUM'
+                ? `Minor pacing and focus fluctuations (${focusLosses} switches). Re-verification advised.`
+                : `High proxy risk detected (${proxyRiskScore}/100). Focus departures and speed anomalies recorded.`,
+        },
         feedback:
           percentage >= 80
-            ? `Outstanding domain mastery demonstrated for ${job.title}. The candidate shows deep technical competence and precision under proctored conditions.`
+            ? `Outstanding domain mastery demonstrated for ${job.title}. The candidate shows deep technical competence and authentic single-window focus.`
             : percentage >= 60
-              ? `Good grasp of essential concepts for ${job.title}. Reviewing the targeted explanations below will solidify mastery for technical interviews.`
+              ? `Good grasp of essential concepts for ${job.title}. Reviewing targeted explanations below will solidify mastery for technical interviews.`
               : `Foundational knowledge present with growth opportunities. Review the detailed answers and architectural concepts below to prepare for future rounds.`,
         strengths: [
           `Scored ${percentage}% on role-specific competency check`,
-          focusLosses === 0
-            ? '100% focused proctoring session without app switching'
+          proxyRiskLevel === 'LOW'
+            ? '100% genuine single-window proctoring session — zero proxy indicators'
             : 'Completed all questions within allotted practice window',
           `Strong alignment with ${job.company}'s engineering expectations`,
         ],
@@ -246,8 +339,8 @@ export default function AssessmentScreen() {
             : ['Ready for live hiring manager interview rounds'],
         skillsBreakdown: [
           { skill: 'Domain Knowledge', score: percentage },
-          { skill: 'Problem Solving', score: Math.min(100, percentage + (focusLosses === 0 ? 5 : -5)) },
-          { skill: 'Focus & Integrity', score: Math.max(40, 100 - focusLosses * 15) },
+          { skill: 'Problem Solving', score: Math.min(100, Math.max(20, percentage + (focusLosses === 0 ? 5 : -5))) },
+          { skill: 'Focus & Integrity', score: Math.max(10, 100 - proxyRiskScore) },
         ],
       };
     }
@@ -266,6 +359,12 @@ export default function AssessmentScreen() {
       total,
       percentage,
       focusLosses,
+      speedAnomalies,
+      clipboardViolations,
+      proxyRiskScore: evalResult.proxyRiskScore ?? 0,
+      proxyRiskLevel: evalResult.proxyRiskLevel ?? 'LOW',
+      identityPledgeSigned,
+      watermarkToken,
       timeSpentSeconds,
       readinessRating: evalResult.readinessRating,
       integrityStatus: evalResult.integrityStatus,
@@ -379,17 +478,41 @@ export default function AssessmentScreen() {
             </View>
           </View>
 
-          {/* Integrity Note */}
-          <View style={styles.integrityBox}>
-            <Feather name="eye" size={14} color="#F0A895" />
-            <Text style={styles.integrityText}>
-              Timed session with anti-cheat monitoring. Focus changes and app switching are logged to
-              ensure honest evaluation.
-            </Text>
+          {/* Anti-Proxy Candidate Attestation & Honor Pledge */}
+          <View style={styles.pledgeCard}>
+            <View style={styles.pledgeHeaderRow}>
+              <View style={styles.pledgeIconWrap}>
+                <Feather name="shield" size={14} color="#10B981" />
+              </View>
+              <Text style={styles.pledgeHeaderTitle}>Anti-Proxy Integrity Attestation</Text>
+              <Pressable onPress={() => setShowPledgeModal(true)}>
+                <Feather name="info" size={15} color="#F0A895" />
+              </Pressable>
+            </View>
+
+            <View style={styles.pledgeCandidateRow}>
+              <Avatar initials={authUser?.name ? authUser.name.slice(0, 2).toUpperCase() : 'AM'} size={32} />
+              <View style={{ flex: 1, gap: 1 }}>
+                <Text style={styles.pledgeCandidateName}>{authUser?.name || 'Alexander Morgan'}</Text>
+                <Text style={styles.pledgeCandidateMeta}>Single Device Verified · Zero Proxy Policy</Text>
+              </View>
+            </View>
+
+            <Pressable
+              onPress={() => setIdentityPledgeSigned((prev) => !prev)}
+              style={styles.checkboxRow}
+            >
+              <View style={[styles.checkboxBox, identityPledgeSigned && styles.checkboxBoxActive]}>
+                {identityPledgeSigned && <Feather name="check" size={12} color="#FFFFFF" />}
+              </View>
+              <Text style={styles.checkboxLabel}>
+                I certify that I am the registered candidate and will complete this assessment independently with NO proxy assistance, external AI tools, or secondary devices.
+              </Text>
+            </Pressable>
           </View>
 
           <PrimaryButton
-            label="Begin AI Assessment"
+            label={identityPledgeSigned ? "Begin Proctored Assessment" : "Accept Anti-Proxy Pledge to Start"}
             icon="arrow-right"
             loading={mutation.isPending}
             onPress={generate}
@@ -448,6 +571,104 @@ export default function AssessmentScreen() {
           <Text style={[styles.aiFeedbackText, { color: colors.foreground }]}>
             {evaluation.feedback}
           </Text>
+        </Card>
+
+        {/* Anti-Proxy Security Audit Card */}
+        <Card style={[styles.antiProxyAuditCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.antiProxyAuditHeader}>
+            <View style={styles.antiProxyTitleRow}>
+              <Feather
+                name={evaluation.proxyRiskLevel === 'HIGH' ? 'alert-triangle' : 'shield'}
+                size={16}
+                color={evaluation.proxyRiskLevel === 'HIGH' ? '#D85D49' : evaluation.proxyRiskLevel === 'MEDIUM' ? '#F59E0B' : '#10B981'}
+              />
+              <Text style={[styles.antiProxyTitle, { color: colors.foreground }]}>
+                Anti-Proxy Security Audit
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.antiProxyRiskBadge,
+                {
+                  backgroundColor:
+                    evaluation.proxyRiskLevel === 'HIGH'
+                      ? '#FFEBE6'
+                      : evaluation.proxyRiskLevel === 'MEDIUM'
+                        ? '#FEF3C7'
+                        : '#D1FAE5',
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.antiProxyRiskText,
+                  {
+                    color:
+                      evaluation.proxyRiskLevel === 'HIGH'
+                        ? '#D85D49'
+                        : evaluation.proxyRiskLevel === 'MEDIUM'
+                          ? '#B45309'
+                          : '#065F46',
+                  },
+                ]}
+              >
+                {evaluation.proxyRiskLevel === 'HIGH'
+                  ? 'HIGH PROXY RISK'
+                  : evaluation.proxyRiskLevel === 'MEDIUM'
+                    ? 'MODERATE INACTIVITY'
+                    : 'VERIFIED GENUINE (0% PROXY RISK)'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.auditMetricsGrid}>
+            <View style={[styles.auditMetricBox, { backgroundColor: colors.secondary }]}>
+              <Text style={[styles.auditMetricValue, { color: colors.foreground }]}>
+                {evaluation.antiProxyAudit?.focusLosses ?? focusLosses}
+              </Text>
+              <Text style={[styles.auditMetricLabel, { color: colors.mutedForeground }]}>
+                Window Switches
+              </Text>
+            </View>
+            <View style={[styles.auditMetricBox, { backgroundColor: colors.secondary }]}>
+              <Text style={[styles.auditMetricValue, { color: colors.foreground }]}>
+                {evaluation.antiProxyAudit?.speedAnomalies ?? speedAnomalies}
+              </Text>
+              <Text style={[styles.auditMetricLabel, { color: colors.mutedForeground }]}>
+                Speed Flags (&lt;2s)
+              </Text>
+            </View>
+            <View style={[styles.auditMetricBox, { backgroundColor: colors.secondary }]}>
+              <Text style={[styles.auditMetricValue, { color: colors.foreground }]}>
+                {evaluation.antiProxyAudit?.clipboardViolations ?? clipboardViolations}
+              </Text>
+              <Text style={[styles.auditMetricLabel, { color: colors.mutedForeground }]}>
+                Copy Blocked
+              </Text>
+            </View>
+            <View style={[styles.auditMetricBox, { backgroundColor: colors.secondary }]}>
+              <Text style={[styles.auditMetricValue, { color: '#10B981' }]}>
+                Signed
+              </Text>
+              <Text style={[styles.auditMetricLabel, { color: colors.mutedForeground }]}>
+                Honor Pledge
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.verdictBox, { backgroundColor: colors.secondary }]}>
+            <Feather
+              name={evaluation.proxyRiskLevel === 'HIGH' ? 'alert-circle' : 'check-circle'}
+              size={14}
+              color={evaluation.proxyRiskLevel === 'HIGH' ? '#D85D49' : colors.primary}
+            />
+            <Text style={[styles.verdictText, { color: colors.foreground }]}>
+              {evaluation.antiProxyAudit?.verdict ||
+                (evaluation.proxyRiskLevel === 'HIGH'
+                  ? 'High external aid likelihood recorded during proctored check.'
+                  : 'Candidate certified authentic. Zero proxy indicators detected during assessment.')}
+            </Text>
+          </View>
         </Card>
 
         {/* Competency Mastery Breakdown */}
@@ -628,17 +849,24 @@ export default function AssessmentScreen() {
 
   return (
     <Screen>
-      {/* Real-time Focus Loss Warning Toast */}
+      {/* Background Anti-Proxy Security Watermark (Anti-Screen Sharing & Leakage) */}
+      <View pointerEvents="none" style={styles.watermarkLayer}>
+        <Text style={styles.watermarkText}>
+          TALENTIQ ANTI-PROXY · {authUser?.name?.toUpperCase() || 'CANDIDATE'} · {watermarkToken || 'SECURE-SESSION'} · SINGLE-WINDOW LOCKED
+        </Text>
+      </View>
+
+      {/* Real-time Focus Loss / Anti-Proxy Warning Toast */}
       {showIntegrityToast && (
         <View style={styles.integrityToast}>
           <Feather name="alert-triangle" size={16} color="#FFFFFF" />
           <Text style={styles.integrityToastText}>
-            App focus change detected ({focusLosses}). Proctoring integrity is logged for review.
+            {integrityToastMessage || `App focus change detected (${focusLosses}). Proctoring integrity logged.`}
           </Text>
         </View>
       )}
 
-      {/* Top Proctoring Bar: Timer + Integrity Badge */}
+      {/* Top Proctoring Bar: Timer + Anti-Proxy Security Badge */}
       <View style={styles.proctorBar}>
         <View style={[styles.timerBadge, { backgroundColor: isTimeCritical ? '#FFEBE6' : colors.card, borderColor: isTimeCritical ? '#D85D49' : colors.border }]}>
           <Feather name="clock" size={14} color={isTimeCritical ? '#D85D49' : colors.primary} />
@@ -648,19 +876,19 @@ export default function AssessmentScreen() {
         </View>
 
         <View style={[styles.integrityBadge, { backgroundColor: focusLosses === 0 ? colors.card : '#FFEBE6', borderColor: colors.border }]}>
-          <Feather name="shield" size={13} color={focusLosses === 0 ? colors.primary : '#D85D49'} />
-          <Text style={[styles.integrityBadgeText, { color: focusLosses === 0 ? colors.mutedForeground : '#D85D49' }]}>
-            {focusLosses === 0 ? 'Protected Session' : `${focusLosses} switches logged`}
+          <Feather name="shield" size={13} color={focusLosses === 0 ? '#10B981' : '#D85D49'} />
+          <Text style={[styles.integrityBadgeText, { color: focusLosses === 0 ? '#10B981' : '#D85D49' }]}>
+            {focusLosses === 0 ? 'ANTI-PROXY ACTIVE' : `${focusLosses} STRIKES · LOGGED`}
           </Text>
         </View>
       </View>
 
       {/* Header Info */}
       <View style={styles.quizHeader}>
-        <Eyebrow>{job.company.toUpperCase()} · AI SKILL CHECK</Eyebrow>
+        <Eyebrow>{job.company.toUpperCase()} · ANTI-PROXY SECURED CHECK</Eyebrow>
         <Text style={[styles.heading, { color: colors.foreground }]}>{quiz.title}</Text>
         <Text style={[styles.quizSub, { color: colors.mutedForeground }]}>
-          Question {currentIdx + 1} of {quiz.questions.length} · {answeredCount} answered
+          Question {currentIdx + 1} of {quiz.questions.length} · {answeredCount} answered · Options randomized
         </Text>
       </View>
 
@@ -674,7 +902,7 @@ export default function AssessmentScreen() {
           return (
             <Pressable
               key={idx}
-              onPress={() => setCurrentIdx(idx)}
+              onPress={() => handleGoToQuestion(idx)}
               style={[
                 styles.stepperItem,
                 {
@@ -707,7 +935,7 @@ export default function AssessmentScreen() {
         })}
       </View>
 
-      {/* Question Card */}
+      {/* Question Card with Anti-Copy Guard */}
       <Card style={[styles.activeQuestionCard, { borderColor: colors.border }]}>
         <View style={styles.questionCardTop}>
           <View style={styles.difficultyPill}>
@@ -735,18 +963,21 @@ export default function AssessmentScreen() {
           </Pressable>
         </View>
 
-        <Text style={[styles.promptText, { color: colors.foreground }]}>
+        <Text
+          style={[styles.promptText, { color: colors.foreground }]}
+          onLongPress={handleClipboardAttempt}
+        >
           {activeQuestion.prompt}
         </Text>
 
-        {/* 4 Answer Options */}
+        {/* 4 Shuffled Answer Options */}
         <View style={styles.optionsList}>
           {activeQuestion.options.map((option, optIdx) => {
             const isSelected = answers[currentIdx] === option;
             return (
               <Pressable
                 key={option}
-                onPress={() => setAnswers((prev) => ({ ...prev, [currentIdx]: option }))}
+                onPress={() => handleSelectOption(option)}
                 style={[
                   styles.optionCard,
                   {
@@ -788,7 +1019,7 @@ export default function AssessmentScreen() {
       <View style={styles.navControls}>
         <Pressable
           disabled={currentIdx === 0}
-          onPress={() => setCurrentIdx((i) => Math.max(0, i - 1))}
+          onPress={() => handleGoToQuestion(Math.max(0, currentIdx - 1))}
           style={[
             styles.navBtn,
             { borderColor: colors.border, opacity: currentIdx === 0 ? 0.4 : 1 },
@@ -800,7 +1031,7 @@ export default function AssessmentScreen() {
 
         {currentIdx < quiz.questions.length - 1 ? (
           <Pressable
-            onPress={() => setCurrentIdx((i) => Math.min(quiz.questions.length - 1, i + 1))}
+            onPress={() => handleGoToQuestion(Math.min(quiz.questions.length - 1, currentIdx + 1))}
             style={[styles.navBtn, { borderColor: colors.border }]}
           >
             <Text style={[styles.navBtnText, { color: colors.foreground }]}>Next</Text>
@@ -841,7 +1072,7 @@ export default function AssessmentScreen() {
             <Text style={[styles.modalBody, { color: colors.mutedForeground }]}>
               You have answered {answeredCount} of {quiz.questions.length} questions.
               {!isAllAnswered ? ` You have ${quiz.questions.length - answeredCount} unanswered question(s).` : ''}
-              {' '}Your proctored evaluation and AI competency report will be generated immediately.
+              {' '}Your Anti-Proxy audit and AI competency report will be generated immediately.
             </Text>
 
             <View style={styles.modalBtnRow}>
@@ -858,6 +1089,59 @@ export default function AssessmentScreen() {
                 onPress={evaluateAndFinish}
               />
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Anti-Proxy Protocol Details Modal */}
+      <Modal visible={showPledgeModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.modalIconBox}>
+              <Feather name="shield" size={24} color="#10B981" />
+            </View>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+              TalentIQ Anti-Proxy Protocol
+            </Text>
+            <Text style={[styles.modalBody, { color: colors.mutedForeground }]}>
+              To guarantee fairness and prevent proxy test-taking, TalentIQ enforces 4 proctoring layers:
+            </Text>
+
+            <View style={styles.ruleList}>
+              <View style={styles.ruleItem}>
+                <Feather name="check" size={14} color="#10B981" />
+                <Text style={[styles.ruleText, { color: colors.foreground }]}>
+                  <Text style={{ fontFamily: 'Inter_700Bold' }}>Single-Window Lock:</Text> Window / app switching triggers strikes logged for recruiters.
+                </Text>
+              </View>
+              <View style={styles.ruleItem}>
+                <Feather name="check" size={14} color="#10B981" />
+                <Text style={[styles.ruleText, { color: colors.foreground }]}>
+                  <Text style={{ fontFamily: 'Inter_700Bold' }}>Anti-Collusion Shuffling:</Text> Options and question sets are scrambled per attempt.
+                </Text>
+              </View>
+              <View style={styles.ruleItem}>
+                <Feather name="check" size={14} color="#10B981" />
+                <Text style={[styles.ruleText, { color: colors.foreground }]}>
+                  <Text style={{ fontFamily: 'Inter_700Bold' }}>Clipboard Guard:</Text> Question copying to external LLMs/proxies is strictly restricted.
+                </Text>
+              </View>
+              <View style={styles.ruleItem}>
+                <Feather name="check" size={14} color="#10B981" />
+                <Text style={[styles.ruleText, { color: colors.foreground }]}>
+                  <Text style={{ fontFamily: 'Inter_700Bold' }}>Pacing Analysis:</Text> Instant (&lt;2s) bot or proxy answering patterns are flagged automatically.
+                </Text>
+              </View>
+            </View>
+
+            <PrimaryButton
+              label="I Understand & Agree"
+              icon="check"
+              onPress={() => {
+                setIdentityPledgeSigned(true);
+                setShowPledgeModal(false);
+              }}
+            />
           </View>
         </View>
       </Modal>
@@ -1137,4 +1421,180 @@ const styles = StyleSheet.create({
   },
   secondaryActionText: { fontFamily: 'Inter_600SemiBold', fontSize: 13 },
   error: { fontFamily: 'Inter_500Medium', fontSize: 12, textAlign: 'center', marginTop: 12 },
+
+  // Anti-Proxy Pledge Card
+  pledgeCard: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 16,
+    padding: 14,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  pledgeHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  pledgeIconWrap: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(16,185,129,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pledgeHeaderTitle: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontFamily: 'Inter_700Bold',
+    fontSize: 12,
+    letterSpacing: 0.3,
+  },
+  pledgeCandidateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 4,
+  },
+  pledgeCandidateName: {
+    color: '#FFFFFF',
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 13,
+  },
+  pledgeCandidateMeta: {
+    color: '#D1D5DB',
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    paddingTop: 4,
+  },
+  checkboxBox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: '#F0A895',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  checkboxBoxActive: {
+    backgroundColor: '#10B981',
+    borderColor: '#10B981',
+  },
+  checkboxLabel: {
+    flex: 1,
+    color: '#F3F4F6',
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
+    lineHeight: 16,
+  },
+
+  // Anti-Proxy Audit Card
+  antiProxyAuditCard: {
+    padding: 18,
+    borderRadius: 20,
+    gap: 14,
+    borderWidth: 1,
+  },
+  antiProxyAuditHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  antiProxyTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  antiProxyTitle: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 14,
+  },
+  antiProxyRiskBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  antiProxyRiskText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 9.5,
+    letterSpacing: 0.4,
+  },
+  auditMetricsGrid: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  auditMetricBox: {
+    flex: 1,
+    padding: 10,
+    borderRadius: 12,
+    alignItems: 'center',
+    gap: 3,
+  },
+  auditMetricValue: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 14,
+  },
+  auditMetricLabel: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 9.5,
+    textAlign: 'center',
+  },
+  verdictBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    padding: 12,
+    borderRadius: 12,
+  },
+  verdictText: {
+    flex: 1,
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11.5,
+    lineHeight: 17,
+  },
+
+  // Security Watermark Layer
+  watermarkLayer: {
+    position: 'absolute',
+    top: 60,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    opacity: 0.07,
+    zIndex: -1,
+  },
+  watermarkText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+    letterSpacing: 2,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+  },
+
+  // Rule list in modal
+  ruleList: {
+    gap: 10,
+    marginVertical: 4,
+  },
+  ruleItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  ruleText: {
+    flex: 1,
+    fontFamily: 'Inter_400Regular',
+    fontSize: 12,
+    lineHeight: 17,
+  },
 });
