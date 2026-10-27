@@ -28,9 +28,24 @@ export default function HRDashboardScreen() {
     (c) => candidateStatuses[c.name] === 'Interview',
   ).length;
   const totalApplicants = sampleCandidates.length;
+  const isDark = colors.background === '#111A19';
+
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)');
+    }
+  };
 
   return (
     <Screen>
+      {/* Back button */}
+      <Pressable onPress={handleBack} style={styles.back}>
+        <Feather name="arrow-left" size={18} color={colors.foreground} />
+        <Text style={[styles.backText, { color: colors.foreground }]}>Back</Text>
+      </Pressable>
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -47,7 +62,7 @@ export default function HRDashboardScreen() {
       {/* Hero banner */}
       <View style={[styles.hero, { backgroundColor: colors.foreground }]}>
         <View style={styles.heroOrb} />
-        <Eyebrow>TALENT PIPELINE OVERVIEW</Eyebrow>
+        <Eyebrow color={isDark ? colors.background : '#8EE3C3'}>TALENT PIPELINE OVERVIEW</Eyebrow>
         <Text style={[styles.heroTitle, { color: colors.background }]}>
           Your hiring{'\n'}at a glance.
         </Text>
@@ -249,6 +264,8 @@ function Metric({
 }
 
 const styles = StyleSheet.create({
+  back: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  backText: { fontFamily: 'Inter_500Medium', fontSize: 13 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerLeft: { gap: 4 },
   subtitle: { fontFamily: 'Inter_400Regular', fontSize: 12 },

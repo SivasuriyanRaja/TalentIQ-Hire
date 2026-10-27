@@ -18,10 +18,18 @@ export default function JobDetailScreen() {
   const [notice, setNotice] = React.useState('');
   const job = jobs.find((item) => item.id === id);
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/jobs');
+    }
+  };
+
   if (!job) {
     return (
       <Screen>
-        <Pressable onPress={() => router.back()} style={styles.back}>
+        <Pressable onPress={handleBack} style={styles.back}>
           <Feather name="arrow-left" size={18} color={colors.foreground} />
           <Text style={[styles.backText, { color: colors.foreground }]}>Back</Text>
         </Pressable>
@@ -77,7 +85,7 @@ export default function JobDetailScreen() {
   return (
     <Screen>
       <View style={styles.nav}>
-        <Pressable onPress={() => router.back()} style={styles.back}>
+        <Pressable onPress={handleBack} style={styles.back}>
           <Feather name="arrow-left" size={18} color={colors.foreground} />
           <Text style={[styles.backText, { color: colors.foreground }]}>Role details</Text>
         </Pressable>

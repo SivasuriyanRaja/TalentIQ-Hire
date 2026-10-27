@@ -9,6 +9,7 @@ import {
   Text,
   TextInput,
   TextInputProps,
+  TextStyle,
   View,
   ViewStyle,
   Platform,
@@ -74,9 +75,21 @@ export function Wordmark({ inverse = false }: { inverse?: boolean }) {
   );
 }
 
-export function Eyebrow({ children }: { children: React.ReactNode }) {
+export function Eyebrow({
+  children,
+  color,
+  style,
+}: {
+  children: React.ReactNode;
+  color?: string;
+  style?: StyleProp<TextStyle>;
+}) {
   const colors = useColors();
-  return <Text style={[styles.eyebrow, { color: colors.mutedForeground }]}>{children}</Text>;
+  return (
+    <Text style={[styles.eyebrow, { color: color || colors.mutedForeground }, style]}>
+      {children}
+    </Text>
+  );
 }
 
 export function SectionTitle({

@@ -24,6 +24,14 @@ export default function CreateJobScreen() {
   const [minPassingScore, setMinPassingScore] = useState<number>(75);
   const [submitting, setSubmitting] = useState(false);
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/jobs');
+    }
+  };
+
   const publish = () => {
     if (!title.trim() || !company.trim() || !location.trim() || !description.trim()) {
       Alert.alert('Add the role details', 'Title, company, location, and description are required.');
@@ -56,7 +64,7 @@ export default function CreateJobScreen() {
 
   return (
     <Screen>
-      <Pressable onPress={() => router.back()} style={styles.back}>
+      <Pressable onPress={handleBack} style={styles.back}>
         <Feather name="arrow-left" size={18} color={colors.foreground} />
         <Text style={[styles.backText, { color: colors.foreground }]}>Back</Text>
       </Pressable>

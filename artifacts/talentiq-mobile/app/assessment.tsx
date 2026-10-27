@@ -67,6 +67,16 @@ export default function AssessmentScreen() {
 
   const job = jobs.find((item) => item.id === jobId);
 
+  const handleBackToRole = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else if (job?.id) {
+      router.replace(`/job/${job.id}`);
+    } else {
+      router.replace('/(tabs)/jobs');
+    }
+  };
+
   // Assessment setup state
   const [assessmentType, setAssessmentType] =
     useState<AssessmentGenerationRequestAssessmentType>(
@@ -418,7 +428,7 @@ export default function AssessmentScreen() {
   if (!quiz) {
     return (
       <Screen>
-        <Pressable onPress={() => router.back()} style={styles.back}>
+        <Pressable onPress={handleBackToRole} style={styles.back}>
           <Feather name="arrow-left" size={18} color={colors.foreground} />
           <Text style={[styles.backText, { color: colors.foreground }]}>Back to role</Text>
         </Pressable>
@@ -581,7 +591,7 @@ export default function AssessmentScreen() {
 
     return (
       <Screen>
-        <Pressable onPress={() => router.back()} style={styles.back}>
+        <Pressable onPress={handleBackToRole} style={styles.back}>
           <Feather name="arrow-left" size={18} color={colors.foreground} />
           <Text style={[styles.backText, { color: colors.foreground }]}>Back to role</Text>
         </Pressable>
@@ -874,7 +884,7 @@ export default function AssessmentScreen() {
           <PrimaryButton
             label="Save & Return to Role"
             icon="check"
-            onPress={() => router.back()}
+            onPress={handleBackToRole}
           />
           <Pressable onPress={() => setQuiz(null)} style={styles.secondaryActionBtn}>
             <Feather name="refresh-cw" size={14} color={colors.foreground} />

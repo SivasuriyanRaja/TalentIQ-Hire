@@ -159,6 +159,16 @@ export default function AIInsightsScreen() {
 
   const job = jobs.find((j) => j.id === jobId);
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else if (job?.id) {
+      router.replace(`/job/${job.id}`);
+    } else {
+      router.replace('/(tabs)/jobs');
+    }
+  };
+
   // Auto-run on mount if signed in and we have a job
   useEffect(() => {
     if (!ran && job && isUserSignedIn && profile.skills.length > 0) {
@@ -205,7 +215,7 @@ export default function AIInsightsScreen() {
   if (!job) {
     return (
       <Screen>
-        <Pressable onPress={() => router.back()} style={styles.back}>
+        <Pressable onPress={handleBack} style={styles.back}>
           <Feather name="arrow-left" size={18} color={colors.foreground} />
           <Text style={[styles.backText, { color: colors.foreground }]}>Back</Text>
         </Pressable>
@@ -220,7 +230,7 @@ export default function AIInsightsScreen() {
   return (
     <Screen>
       {/* Nav */}
-      <Pressable onPress={() => router.back()} style={styles.back}>
+      <Pressable onPress={handleBack} style={styles.back}>
         <Feather name="arrow-left" size={18} color={colors.foreground} />
         <Text style={[styles.backText, { color: colors.foreground }]}>Back to role</Text>
       </Pressable>
