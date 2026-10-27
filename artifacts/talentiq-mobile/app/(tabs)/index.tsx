@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { Feather } from '@expo/vector-icons';
-import { useUser } from '@clerk/expo';
+import { useUser } from '@/lib/authBridge';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { BackHandler, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import {

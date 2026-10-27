@@ -9,7 +9,6 @@ import {
   View,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useAuth } from '@clerk/expo';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { useAnalyzeTalentMatch } from '@workspace/api-client-react';

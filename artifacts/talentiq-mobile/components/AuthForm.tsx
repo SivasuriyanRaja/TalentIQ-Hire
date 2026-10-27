@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Feather } from '@expo/vector-icons';
-import { useSignIn, useSignUp } from '@clerk/expo';
+import { useSignIn, useSignUp } from '@/lib/authBridge';
 import * as Haptics from 'expo-haptics';
 import { Href, useRouter } from 'expo-router';
 import {

@@ -8,7 +8,7 @@
 
 import { useCallback } from 'react';
 import { Platform } from 'react-native';
-import { useAuth } from '@clerk/expo';
+import { useAuth } from '@/lib/authBridge';
 import type { Application, ApplicationStatus, CandidateProfile } from '@/data/talentiq';
 import { getApiEndpoint } from '@/utils/apiConfig';
 

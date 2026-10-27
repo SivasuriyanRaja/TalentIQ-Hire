@@ -20,7 +20,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { useAuth, useClerk } from '@clerk/expo';
+import { useAuth, useClerk } from '@/lib/authBridge';
 import { useRouter } from 'expo-router';
 import {
   Application,

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Feather } from '@expo/vector-icons';
-import { useAuth, useClerk, useUser } from '@clerk/expo';
+import { useAuth, useClerk, useUser } from '@/lib/authBridge';
 import { useRouter } from 'expo-router';
 import {
   ActivityIndicator,

@@ -1,6 +1,5 @@
 import React from 'react';
 import { Feather } from '@expo/vector-icons';
-import { useAuth } from '@clerk/expo';
 import { useAnalyzeTalentMatch } from '@workspace/api-client-react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ClerkLoaded, ClerkProvider, useAuth } from '@clerk/expo';
+import { ClerkLoaded, ClerkProvider, useAuth, isClerkConfigured } from '@/lib/authBridge';
 import { tokenCache } from '@clerk/expo/token-cache';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
@@ -121,28 +121,8 @@ export default function RootLayout() {
 
   if (!fontsLoaded && !fontError) return null;
 
-  const rawKey =
-    process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ??
-    process.env.CLERK_PUBLISHABLE_KEY ??
-    '';
-  const isClerkConfigured =
-    Boolean(rawKey) &&
-    !rawKey.includes('REPLACE_WITH_YOUR') &&
-    !rawKey.includes('dGFsZW50aXEuY2xlcmsuYWNjb3VudHMuZGV2JA');
-
-  const publishableKey = isClerkConfigured
-    ? rawKey
-    : 'pk_test_dGFsZW50aXEuY2xlcmsuYWNjb3VudHMuZGV2JA';
-
-  if (!isClerkConfigured) {
-    console.warn(
-      '[TalentIQ] Running in Guest/Dev Mode (no real Clerk key). To enable full Clerk authentication, add your CLERK_PUBLISHABLE_KEY from https://dashboard.clerk.com to artifacts/talentiq-mobile/.env'
-    );
-  }
-
   return (
     <ClerkProvider
-      publishableKey={publishableKey}
       tokenCache={tokenCache}
       proxyUrl={process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined}
     >
