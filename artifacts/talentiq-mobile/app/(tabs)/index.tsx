@@ -2,7 +2,7 @@ import React, { useCallback } from 'react';
 import { Feather } from '@expo/vector-icons';
 import { useUser } from '@clerk/expo';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   Avatar,
   Card,
@@ -36,6 +36,7 @@ export default function HomeScreen() {
   // rather than popping back into the login/welcome screens
   useFocusEffect(
     useCallback(() => {
+      if (Platform.OS !== 'android') return;
       const onBackPress = () => {
         BackHandler.exitApp();
         return true;

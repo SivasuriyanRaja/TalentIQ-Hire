@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import { Feather } from '@expo/vector-icons';
 import { Redirect, useFocusEffect, useRouter } from 'expo-router';
-import { BackHandler, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useColors } from '@/hooks/useColors';
 import { Screen, Wordmark } from '@/components/ui';
 import { useTalentIQ } from '@/state/TalentIQContext';
@@ -14,6 +14,7 @@ export default function WelcomeScreen() {
   // Prevent hardware back button from popping back into signed-in routes or previous screens
   useFocusEffect(
     useCallback(() => {
+      if (Platform.OS !== 'android') return;
       const onBackPress = () => {
         BackHandler.exitApp();
         return true;
