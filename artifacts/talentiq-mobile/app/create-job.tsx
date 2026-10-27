@@ -20,6 +20,8 @@ export default function CreateJobScreen() {
   const [description, setDescription] = useState('');
   const [skills, setSkills] = useState('');
   const [workMode, setWorkMode] = useState<Job['workMode']>('Remote');
+  const [requireAssessment, setRequireAssessment] = useState(true);
+  const [minPassingScore, setMinPassingScore] = useState<number>(75);
   const [submitting, setSubmitting] = useState(false);
 
   const publish = () => {
@@ -44,6 +46,8 @@ export default function CreateJobScreen() {
         .filter(Boolean)
         .slice(0, 12),
       color: '#DCEBE3',
+      assessmentRequired: requireAssessment,
+      assessmentMinScore: minPassingScore,
     };
     addJob(job);
     setSubmitting(false);
@@ -88,10 +92,60 @@ export default function CreateJobScreen() {
         placeholder="Share what this person will work on and how they’ll make an impact."
         multiline
       />
+
+      {/* AI Assessment Configuration */}
+      <View style={[styles.assessmentCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Pressable
+          onPress={() => setRequireAssessment((prev) => !prev)}
+          style={styles.checkboxRow}
+        >
+          <View
+            style={[
+              styles.checkbox,
+              {
+                backgroundColor: requireAssessment ? colors.primary : colors.card,
+                borderColor: requireAssessment ? colors.primary : colors.border,
+              },
+            ]}
+          >
+            {requireAssessment && <Feather name="check" size={12} color={colors.primaryForeground} />}
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Feather name="zap" size={13} color={colors.primary} />
+              <Text style={[styles.configTitle, { color: colors.foreground }]}>
+                Require AI Skill Check
+              </Text>
+            </View>
+            <Text style={[styles.configSubtitle, { color: colors.mutedForeground }]}>
+              Candidates complete a 5-question proctored skill check on application.
+            </Text>
+          </View>
+        </Pressable>
+
+        {requireAssessment && (
+          <View style={styles.scoreRow}>
+            <Text style={[styles.scoreLabel, { color: colors.foreground }]}>
+              Minimum Target Score:
+            </Text>
+            <View style={styles.scoreChips}>
+              {[60, 75, 85].map((score) => (
+                <Chip
+                  key={score}
+                  label={`${score}%`}
+                  selected={minPassingScore === score}
+                  onPress={() => setMinPassingScore(score)}
+                />
+              ))}
+            </View>
+          </View>
+        )}
+      </View>
+
       <View style={[styles.tip, { backgroundColor: colors.secondary }]}>
-        <Feather name="zap" size={15} color={colors.primary} />
+        <Feather name="shield" size={15} color={colors.primary} />
         <Text style={[styles.tipText, { color: colors.secondaryForeground }]}>
-          Specific skills help TalentIQ create more useful candidate insights.
+          Candidates with verified AI assessments receive priority ranking in the pipeline.
         </Text>
       </View>
       <PrimaryButton label="Publish role" icon="arrow-up-right" loading={submitting} onPress={publish} />
@@ -111,4 +165,31 @@ const styles = StyleSheet.create({
   modes: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   tip: { flexDirection: 'row', gap: 9, padding: 12, borderRadius: 14 },
   tipText: { flex: 1, fontFamily: 'Inter_400Regular', fontSize: 11, lineHeight: 16 },
+  assessmentCard: {
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 12,
+    marginVertical: 4,
+  },
+  checkboxRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  configTitle: { fontFamily: 'Inter_700Bold', fontSize: 13 },
+  configSubtitle: { fontFamily: 'Inter_400Regular', fontSize: 11.5, lineHeight: 16 },
+  scoreRow: {
+    gap: 8,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(128,128,128,0.15)',
+  },
+  scoreLabel: { fontFamily: 'Inter_600SemiBold', fontSize: 11.5 },
+  scoreChips: { flexDirection: 'row', gap: 8 },
 });

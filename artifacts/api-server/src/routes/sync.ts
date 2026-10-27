@@ -27,6 +27,7 @@ import {
   CloudApplication,
   RecruiterStageUpdate,
   SavedJob,
+  CloudAssessmentAttempt,
 } from "@workspace/db";
 import { RESUME_UPLOAD_DIR } from "../app";
 
@@ -568,6 +569,94 @@ router.put("/sync/stages/:name", requireAuth, async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to update recruiter stage");
     res.status(500).json({ message: "Could not update pipeline stage." });
+  }
+});
+
+// ─── Assessment attempts sync routes ──────────────────────────────────────────
+
+/** POST /api/sync/assessments — save a completed assessment attempt */
+router.post("/sync/assessments", requireAuth, async (req, res) => {
+  const userId = getRequestUserId(req);
+  const body = req.body as Record<string, unknown>;
+
+  if (
+    typeof body.jobId !== "string" ||
+    typeof body.score !== "number" ||
+    typeof body.total !== "number"
+  ) {
+    res.status(400).json({ message: "jobId, score and total are required." });
+    return;
+  }
+
+  const score = Math.max(0, body.score);
+  const total = Math.max(1, body.total);
+  const percentage = Math.round((score / total) * 100);
+  const focusLosses = typeof body.focusLosses === "number" ? Math.max(0, body.focusLosses) : 0;
+  const timeSpentSeconds = typeof body.timeSpentSeconds === "number" ? Math.max(0, body.timeSpentSeconds) : 0;
+  const candidateName = typeof body.candidateName === "string" ? body.candidateName.slice(0, 120) : "Candidate";
+  const jobTitle = typeof body.jobTitle === "string" ? body.jobTitle.slice(0, 160) : "Role";
+  const company = typeof body.company === "string" ? body.company.slice(0, 160) : "Company";
+  const assessmentTitle = typeof body.assessmentTitle === "string" ? body.assessmentTitle.slice(0, 160) : `${jobTitle} Assessment`;
+  const feedback = typeof body.feedback === "string" ? body.feedback.slice(0, 800) : "";
+  const skillsBreakdown = Array.isArray(body.skillsBreakdown)
+    ? (body.skillsBreakdown as unknown[]).filter((s): s is { skill: string; score: number } =>
+        typeof s === "object" && s !== null && typeof (s as any).skill === "string" && typeof (s as any).score === "number"
+      )
+    : [];
+
+  try {
+    const attempt = await CloudAssessmentAttempt.create({
+      userId,
+      candidateName,
+      jobId: body.jobId,
+      jobTitle,
+      company,
+      assessmentTitle,
+      score,
+      total,
+      percentage,
+      focusLosses,
+      timeSpentSeconds,
+      feedback,
+      skillsBreakdown,
+      completedAt: typeof body.completedAt === "string" ? body.completedAt : new Date().toISOString(),
+    });
+
+    res.json({ message: "Assessment attempt recorded successfully", attempt });
+  } catch (err) {
+    req.log.error({ err }, "Failed to save assessment attempt");
+    res.status(500).json({ message: "Could not save assessment attempt." });
+  }
+});
+
+/** GET /api/sync/assessments — get candidate's past assessment attempts */
+router.get("/sync/assessments", requireAuth, async (req, res) => {
+  const userId = getRequestUserId(req);
+  try {
+    const attempts = await CloudAssessmentAttempt.find({ userId })
+      .sort({ createdAt: -1 })
+      .limit(30)
+      .lean();
+    res.json(attempts);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch assessment attempts");
+    res.status(500).json({ message: "Could not load assessments." });
+  }
+});
+
+/** GET /api/sync/recruiter/assessments — recruiter view: get candidate submissions */
+router.get("/sync/recruiter/assessments", requireAuth, async (req, res) => {
+  const jobId = req.query.jobId as string | undefined;
+  const filter = jobId ? { jobId } : {};
+  try {
+    const attempts = await CloudAssessmentAttempt.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
+    res.json(attempts);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch recruiter candidate assessments");
+    res.status(500).json({ message: "Could not load candidate assessments." });
   }
 });
 

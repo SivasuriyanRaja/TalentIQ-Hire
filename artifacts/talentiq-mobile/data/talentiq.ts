@@ -18,6 +18,8 @@ export interface Job {
   description: string;
   skills: string[];
   color: string;
+  assessmentRequired?: boolean;
+  assessmentMinScore?: number;
 }
 
 export interface Application {
@@ -48,9 +50,18 @@ export interface CandidateProfile {
 export interface AssessmentAttempt {
   id: string;
   jobId: string;
+  jobTitle?: string;
+  company?: string;
+  assessmentTitle?: string;
   score: number;
   total: number;
+  percentage?: number;
   focusLosses: number;
+  timeSpentSeconds?: number;
+  readinessRating?: string;
+  integrityStatus?: string;
+  feedback?: string;
+  skillsBreakdown?: Array<{ skill: string; score: number }>;
   completedAt: string;
 }
 

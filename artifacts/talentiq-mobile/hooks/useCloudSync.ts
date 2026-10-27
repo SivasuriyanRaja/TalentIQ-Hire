@@ -311,14 +311,71 @@ export function useCloudSync(activeUserId?: string | null) {
       if (!canSync) return;
       try {
         const token = await getToken().catch(() => null);
-        await apiFetch(
-          `/sync/stages/${encodeURIComponent(candidateName)}`,
-          token,
-          activeUserId,
-          { method: 'PUT', body: JSON.stringify({ status }) },
-        );
+        await apiFetch(`/sync/stages/${encodeURIComponent(candidateName)}`, token, activeUserId, {
+          method: 'PUT',
+          body: JSON.stringify({ status }),
+        });
       } catch {
         // Non-fatal
+      }
+    },
+    [canSync, getToken, activeUserId],
+  );
+
+  // ── Assessment Sync ────────────────────────────────────────────────────────
+
+  const pushAssessmentAttempt = useCallback(
+    async (payload: {
+      jobId: string;
+      jobTitle?: string;
+      company?: string;
+      candidateName?: string;
+      assessmentTitle?: string;
+      score: number;
+      total: number;
+      focusLosses: number;
+      timeSpentSeconds?: number;
+      feedback?: string;
+      skillsBreakdown?: Array<{ skill: string; score: number }>;
+      completedAt?: string;
+    }): Promise<void> => {
+      if (!canSync) return;
+      try {
+        const token = await getToken().catch(() => null);
+        await apiFetch('/sync/assessments', token, activeUserId, {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+      } catch {
+        // Non-fatal
+      }
+    },
+    [canSync, getToken, activeUserId],
+  );
+
+  const fetchCloudAssessments = useCallback(async (): Promise<any[]> => {
+    if (!canSync) return [];
+    try {
+      const token = await getToken().catch(() => null);
+      const res = await apiFetch('/sync/assessments', token, activeUserId);
+      if (!res.ok) return [];
+      return (await res.json()) as any[];
+    } catch {
+      return [];
+    }
+  }, [canSync, getToken, activeUserId]);
+
+  const fetchRecruiterAssessments = useCallback(
+    async (jobId?: string): Promise<any[]> => {
+      if (!canSync) return [];
+      try {
+        const token = await getToken().catch(() => null);
+        const query = jobId ? `?jobId=${encodeURIComponent(jobId)}` : '';
+        const res = await apiFetch(`/sync/recruiter/assessments${query}`, token, activeUserId);
+        if (!res.ok) return [];
+        return (await res.json()) as any[];
+      } catch {
+        return [];
       }
     },
     [canSync, getToken, activeUserId],
@@ -335,5 +392,8 @@ export function useCloudSync(activeUserId?: string | null) {
     toggleSavedJobCloud,
     fetchCloudStages,
     pushStage,
+    pushAssessmentAttempt,
+    fetchCloudAssessments,
+    fetchRecruiterAssessments,
   };
 }

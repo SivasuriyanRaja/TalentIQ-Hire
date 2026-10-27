@@ -265,3 +265,56 @@ SavedJobSchema.index({ userId: 1, jobId: 1 }, { unique: true });
 export const SavedJob =
   mongoose.models.SavedJob ??
   mongoose.model<ISavedJob>("SavedJob", SavedJobSchema);
+
+// ─── CloudAssessmentAttempt (AI assessment attempts & integrity history) ─────
+
+export interface ICloudAssessmentAttempt extends Document {
+  userId: string;
+  candidateName: string;
+  jobId: string;
+  jobTitle: string;
+  company: string;
+  assessmentTitle: string;
+  score: number;
+  total: number;
+  percentage: number;
+  focusLosses: number;
+  timeSpentSeconds: number;
+  feedback: string;
+  skillsBreakdown: Array<{ skill: string; score: number }>;
+  completedAt: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const CloudAssessmentAttemptSchema = new Schema<ICloudAssessmentAttempt>(
+  {
+    userId: { type: String, required: true, index: true },
+    candidateName: { type: String, required: true, maxlength: 120 },
+    jobId: { type: String, required: true, maxlength: 200, index: true },
+    jobTitle: { type: String, required: true, maxlength: 160 },
+    company: { type: String, required: true, maxlength: 160 },
+    assessmentTitle: { type: String, required: true, maxlength: 160 },
+    score: { type: Number, required: true, min: 0 },
+    total: { type: Number, required: true, min: 1 },
+    percentage: { type: Number, required: true, min: 0, max: 100 },
+    focusLosses: { type: Number, required: true, min: 0, default: 0 },
+    timeSpentSeconds: { type: Number, default: 0 },
+    feedback: { type: String, default: "" },
+    skillsBreakdown: [
+      {
+        skill: { type: String, required: true },
+        score: { type: Number, required: true, min: 0, max: 100 },
+      },
+    ],
+    completedAt: { type: String, required: true },
+  },
+  { timestamps: true },
+);
+
+export const CloudAssessmentAttempt =
+  mongoose.models.CloudAssessmentAttempt ??
+  mongoose.model<ICloudAssessmentAttempt>(
+    "CloudAssessmentAttempt",
+    CloudAssessmentAttemptSchema,
+  );

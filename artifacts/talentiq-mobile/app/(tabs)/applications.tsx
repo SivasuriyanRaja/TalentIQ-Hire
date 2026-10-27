@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   Avatar,
   Card,
@@ -27,6 +27,8 @@ export default function ApplicationsScreen() {
   const colors = useColors();
   const router = useRouter();
   const { role, applications, jobs, attempts, candidateStatuses, setCandidateStatus } = useTalentIQ();
+  const [selectedCandidate, setSelectedCandidate] = useState<typeof sampleCandidates[0] | null>(null);
+  const [assignedStatus, setAssignedStatus] = useState<Record<string, boolean>>({});
 
   if (role === 'recruiter') {
     return (
@@ -92,15 +94,114 @@ export default function ApplicationsScreen() {
               </Pressable>
             </View>
             <View style={[styles.reviewRow, { borderTopColor: colors.border }]}>
-              <Text style={[styles.candidateSub, { color: colors.mutedForeground }]}>
-                {index === 0 ? 'Strong match · assessment complete' : 'Skills align · ready to review'}
-              </Text>
-              <Pressable onPress={() => router.push('/(tabs)/jobs')}>
-                <Text style={[styles.reviewLink, { color: colors.primary }]}>Review</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                <Feather name="zap" size={13} color={colors.primary} />
+                <Text style={[styles.candidateSub, { color: colors.foreground }]}>
+                  {index === 0
+                    ? 'AI Assessment: 5/5 (100% · High Trust)'
+                    : index === 1
+                      ? 'AI Assessment: 4/5 (80% · Verified)'
+                      : assignedStatus[candidate.name]
+                        ? 'AI Assessment: Assigned (Pending)'
+                        : 'Skill check: Not yet taken'}
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => {
+                  if (index <= 1) {
+                    setSelectedCandidate(candidate);
+                  } else if (!assignedStatus[candidate.name]) {
+                    setAssignedStatus((prev) => ({ ...prev, [candidate.name]: true }));
+                    Alert.alert(
+                      'Assessment Assigned',
+                      `An automated 5-question AI Skill Check has been assigned to ${candidate.name}.`,
+                    );
+                  } else {
+                    Alert.alert('Status', `${candidate.name} has a pending assessment check.`);
+                  }
+                }}
+              >
+                <Text style={[styles.reviewLink, { color: colors.primary }]}>
+                  {index <= 1 ? 'View Report' : assignedStatus[candidate.name] ? 'Pending' : 'Assign Check'}
+                </Text>
               </Pressable>
             </View>
           </Card>
         ))}
+
+        {/* Candidate AI Assessment Review Modal */}
+        <Modal visible={Boolean(selectedCandidate)} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={styles.modalHeader}>
+                <Avatar initials={selectedCandidate?.initials ?? 'CA'} size={44} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.modalCandidateName, { color: colors.foreground }]}>
+                    {selectedCandidate?.name}
+                  </Text>
+                  <Text style={[styles.candidateSub, { color: colors.mutedForeground }]}>
+                    {selectedCandidate?.title} · {selectedCandidate?.experience}
+                  </Text>
+                </View>
+                <Pressable onPress={() => setSelectedCandidate(null)}>
+                  <Feather name="x" size={20} color={colors.mutedForeground} />
+                </Pressable>
+              </View>
+
+              <View style={[styles.modalScoreCard, { backgroundColor: colors.accent }]}>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={[styles.modalScoreTitle, { color: colors.accentForeground }]}>
+                    AI Verified Skill Check
+                  </Text>
+                  <Text style={[styles.modalScoreSub, { color: colors.accentForeground }]}>
+                    {selectedCandidate?.name === 'Jordan Lee' ? 'Score: 100% · Strong Hire' : 'Score: 80% · Qualified'}
+                  </Text>
+                </View>
+                <View style={styles.verifiedBadge}>
+                  <Feather name="shield" size={13} color="#FFFFFF" />
+                  <Text style={styles.verifiedBadgeText}>PROCTORED</Text>
+                </View>
+              </View>
+
+              <View style={styles.modalSkillsBlock}>
+                <Text style={[styles.modalSectionTitle, { color: colors.foreground }]}>
+                  Tested Competencies
+                </Text>
+                {selectedCandidate?.skills.map((skill) => (
+                  <View key={skill} style={styles.modalSkillRow}>
+                    <Text style={[styles.modalSkillName, { color: colors.foreground }]}>{skill}</Text>
+                    <View style={styles.modalSkillBarWrap}>
+                      <View style={[styles.modalSkillBarTrack, { backgroundColor: colors.secondary }]}>
+                        <View
+                          style={[
+                            styles.modalSkillBarFill,
+                            { backgroundColor: colors.primary, width: selectedCandidate.name === 'Jordan Lee' ? '95%' : '85%' },
+                          ]}
+                        />
+                      </View>
+                      <Text style={[styles.modalSkillScore, { color: colors.primary }]}>
+                        {selectedCandidate.name === 'Jordan Lee' ? '95%' : '85%'}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+
+              <View style={[styles.proctorNotice, { backgroundColor: colors.secondary }]}>
+                <Feather name="check-circle" size={14} color={colors.primary} />
+                <Text style={[styles.proctorNoticeText, { color: colors.foreground }]}>
+                  0 focus changes during 12-minute proctored check. Candidate is authentic.
+                </Text>
+              </View>
+
+              <PrimaryButton
+                label="Done Reviewing"
+                icon="check"
+                onPress={() => setSelectedCandidate(null)}
+              />
+            </View>
+          </View>
+        </Modal>
         <View style={[styles.sampleNotice, { backgroundColor: colors.secondary }]}>
           <Feather name="info" size={14} color={colors.mutedForeground} />
           <Text style={[styles.sampleText, { color: colors.mutedForeground }]}>
@@ -169,19 +270,42 @@ export default function ApplicationsScreen() {
       )}
       {attempts.length > 0 ? (
         <View style={styles.list}>
-          <SectionTitle title="Recent assessments" />
-          {attempts.slice(0, 3).map((attempt) => {
+          <SectionTitle title="Your AI Assessments" />
+          {attempts.slice(0, 5).map((attempt) => {
             const job = jobs.find((item) => item.id === attempt.jobId);
+            const percentage =
+              attempt.percentage ?? Math.round((attempt.score / Math.max(1, attempt.total)) * 100);
+            const isPassing = percentage >= 70;
+
             return (
               <Card key={attempt.id} style={styles.attemptRow}>
-                <View style={[styles.attemptIcon, { backgroundColor: colors.accent }]}>
-                  <Feather name="check" size={16} color={colors.accentForeground} />
+                <View
+                  style={[
+                    styles.attemptIcon,
+                    { backgroundColor: isPassing ? colors.accent : colors.secondary },
+                  ]}
+                >
+                  <Feather
+                    name={isPassing ? 'award' : 'zap'}
+                    size={16}
+                    color={isPassing ? colors.accentForeground : colors.primary}
+                  />
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.applicationTitle, { color: colors.foreground }]}>{job?.title ?? 'Role assessment'}</Text>
-                  <Text style={[styles.candidateSub, { color: colors.mutedForeground }]}>
-                    {attempt.score}/{attempt.total} correct · {attempt.focusLosses} focus changes logged
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={[styles.applicationTitle, { color: colors.foreground }]}>
+                    {attempt.assessmentTitle ?? job?.title ?? 'Role Skill Assessment'}
                   </Text>
+                  <Text style={[styles.candidateSub, { color: colors.mutedForeground }]}>
+                    {attempt.score}/{attempt.total} Correct ({percentage}%) ·{' '}
+                    {attempt.focusLosses === 0
+                      ? 'Verified Authentic (0 switches)'
+                      : `${attempt.focusLosses} focus switches`}
+                  </Text>
+                  {attempt.readinessRating ? (
+                    <Text style={[styles.attemptRating, { color: colors.primary }]}>
+                      {attempt.readinessRating}
+                    </Text>
+                  ) : null}
                 </View>
               </Card>
             );
@@ -255,4 +379,109 @@ const styles = StyleSheet.create({
   statusText: { fontFamily: 'Inter_600SemiBold', fontSize: 9 },
   attemptRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 13 },
   attemptIcon: { width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  attemptRating: { fontFamily: 'Inter_600SemiBold', fontSize: 11, marginTop: 2 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 420,
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 20,
+    gap: 16,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  modalCandidateName: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 16,
+  },
+  modalScoreCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    borderRadius: 14,
+  },
+  modalScoreTitle: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 14,
+  },
+  modalScoreSub: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 12,
+    opacity: 0.9,
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#10B981',
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  verifiedBadgeText: {
+    color: '#FFFFFF',
+    fontFamily: 'Inter_700Bold',
+    fontSize: 9,
+    letterSpacing: 0.5,
+  },
+  modalSkillsBlock: {
+    gap: 10,
+  },
+  modalSectionTitle: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 13,
+    marginBottom: 4,
+  },
+  modalSkillRow: {
+    gap: 4,
+  },
+  modalSkillName: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 12,
+  },
+  modalSkillBarWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  modalSkillBarTrack: {
+    flex: 1,
+    height: 8,
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  modalSkillBarFill: {
+    height: '100%',
+    borderRadius: 999,
+  },
+  modalSkillScore: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+    width: 32,
+    textAlign: 'right',
+  },
+  proctorNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: 12,
+  },
+  proctorNoticeText: {
+    flex: 1,
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
+    lineHeight: 16,
+  },
 });

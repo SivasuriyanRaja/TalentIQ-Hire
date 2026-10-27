@@ -298,12 +298,13 @@ export function TalentIQProvider({
     setIsSyncing(true);
     setSyncError('');
     try {
-      const [cloudProfile, cloudApps, cloudSavedIds, cloudStages] =
+      const [cloudProfile, cloudApps, cloudSavedIds, cloudStages, cloudAssessments] =
         await Promise.all([
           cloudSync.fetchCloudProfile(),
           cloudSync.fetchCloudApplications(),
           cloudSync.fetchCloudSavedJobIds(),
           cloudSync.fetchCloudStages(),
+          cloudSync.fetchCloudAssessments(),
         ]);
 
       setState((current) => {
@@ -339,6 +340,29 @@ export function TalentIQProvider({
             ...current.candidateStatuses,
             ...cloudStages,
           };
+        }
+
+        if (Array.isArray(cloudAssessments) && cloudAssessments.length > 0) {
+          const attemptMap = new Map(current.attempts.map((a) => [a.id, a]));
+          for (const item of cloudAssessments) {
+            const id = String(item._id || item.id || `${item.jobId}-${item.completedAt}`);
+            attemptMap.set(id, {
+              id,
+              jobId: String(item.jobId || ''),
+              jobTitle: item.jobTitle,
+              company: item.company,
+              assessmentTitle: item.assessmentTitle,
+              score: Number(item.score || 0),
+              total: Number(item.total || 1),
+              percentage: Number(item.percentage || 0),
+              focusLosses: Number(item.focusLosses || 0),
+              timeSpentSeconds: Number(item.timeSpentSeconds || 0),
+              feedback: item.feedback,
+              skillsBreakdown: item.skillsBreakdown,
+              completedAt: String(item.completedAt || new Date().toISOString()),
+            });
+          }
+          merged.attempts = Array.from(attemptMap.values());
         }
 
         return merged;
@@ -519,12 +543,29 @@ export function TalentIQProvider({
     }));
   }, []);
 
-  const completeAssessment = useCallback((attempt: AssessmentAttempt) => {
-    setState((current) => ({
-      ...current,
-      attempts: [attempt, ...current.attempts],
-    }));
-  }, []);
+  const completeAssessment = useCallback(
+    (attempt: AssessmentAttempt) => {
+      setState((current) => ({
+        ...current,
+        attempts: [attempt, ...current.attempts],
+      }));
+      void cloudSync.pushAssessmentAttempt({
+        jobId: attempt.jobId,
+        jobTitle: attempt.jobTitle,
+        company: attempt.company,
+        candidateName: authUser?.name || 'Candidate',
+        assessmentTitle: attempt.assessmentTitle,
+        score: attempt.score,
+        total: attempt.total,
+        focusLosses: attempt.focusLosses,
+        timeSpentSeconds: attempt.timeSpentSeconds,
+        feedback: attempt.feedback,
+        skillsBreakdown: attempt.skillsBreakdown,
+        completedAt: attempt.completedAt,
+      });
+    },
+    [cloudSync, authUser],
+  );
 
   const setCandidateStatus = useCallback(
     (name: string, status: ApplicationStatus) => {
