@@ -7,5 +7,14 @@
     "hash": "080038370eedda6b380ba7ac1b24e5373dfd0b98aa7831e5c422686c50d9c29a4a85d35a6e5552049c741e70bf9e9d082ab03b006cf3fc3dd922c62ab11c833f",
     "role": "candidate",
     "createdAt": "2026-10-27T11:34:17.279Z"
+  },
+  "user_930178ed612770d4": {
+    "userId": "user_930178ed612770d4",
+    "name": "sivasuriyan raja",
+    "email": "sivasuriya2k3@gmail.com",
+    "salt": "541be4bb1f08d8ddcf32b2f66b9b0b38",
+    "hash": "5a14196bda703b0b6c184938b7570b7f1503e1897c357fcc209a84b3077a6ca8dda310713337b3c9cf123d847ce700ca10fde60ac2a37dc2724c30e5cff958cd",
+    "role": "candidate",
+    "createdAt": "2026-10-28T06:42:59.559Z"
   }
 }

@@ -80,17 +80,11 @@ function RootLayoutNav() {
 
     // If not authenticated, CANNOT access protected routes on launch -> redirect to welcome screen
     if ((!isUserSignedIn || authMode !== 'authenticated') && inProtected) {
-      if (router.canDismiss()) {
-        router.dismissAll();
-      }
       router.replace('/');
     }
 
-    // If authenticated and on (auth) modals, dismiss them and send to dashboard
+    // If authenticated and on (auth) modals, send to dashboard
     if (isUserSignedIn && authMode === 'authenticated' && inAuthGroup) {
-      if (router.canDismiss()) {
-        router.dismissAll();
-      }
       router.replace('/(tabs)');
     }
   }, [isUserSignedIn, authMode, contextLoaded, segments, router]);

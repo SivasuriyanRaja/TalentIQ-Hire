@@ -477,11 +477,6 @@ export function TalentIQProvider({
             : Promise.resolve(),
         ]);
 
-        try {
-          if (router.canDismiss()) {
-            router.dismissAll();
-          }
-        } catch {}
         router.replace('/(tabs)');
         return { success: true };
       } catch (err: any) {
@@ -546,11 +541,6 @@ export function TalentIQProvider({
             : Promise.resolve(),
         ]);
 
-        try {
-          if (router.canDismiss()) {
-            router.dismissAll();
-          }
-        } catch {}
         router.replace('/(tabs)');
         return { success: true };
       } catch (err: any) {
@@ -594,11 +584,6 @@ export function TalentIQProvider({
         await AsyncStorage.setItem('talentiq.auth.mode', 'authenticated');
       } catch {}
 
-      try {
-        if (router.canDismiss()) {
-          router.dismissAll();
-        }
-      } catch {}
       router.replace('/(tabs)');
     },
     [router],
@@ -618,11 +603,6 @@ export function TalentIQProvider({
         await AsyncStorage.removeItem('talentiq.auth.mode');
       } catch {}
 
-      try {
-        if (router.canDismiss()) {
-          router.dismissAll();
-        }
-      } catch {}
       router.replace('/(tabs)');
     },
     [router],
@@ -646,12 +626,6 @@ export function TalentIQProvider({
     try {
       if (isSignedIn) {
         await clerkSignOut();
-      }
-    } catch {}
-
-    try {
-      if (router.canDismiss()) {
-        router.dismissAll();
       }
     } catch {}
 
