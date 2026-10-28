@@ -202,7 +202,7 @@ export function TalentIQProvider({
       AsyncStorage.getItem('talentiq.auth.session'),
       AsyncStorage.getItem('talentiq.auth.mode'),
     ])
-      .then(([savedSession, savedMode]) => {
+      .then(([savedSession]) => {
         if (!active) return;
         if (savedSession) {
           try {
@@ -212,16 +212,22 @@ export function TalentIQProvider({
             return;
           } catch {}
         }
-        if (savedMode === 'guest') {
-          setAuthMode('guest');
-        } else if (isSignedIn) {
+        if (isSignedIn) {
           setAuthMode('authenticated');
-        } else {
-          setAuthMode('unauthenticated');
+          return;
         }
+        // When launching the app, NEVER open in guest ID.
+        // Cold start always begins in unauthenticated state (welcome flow)
+        // unless an authenticated user session exists.
+        setAuthUser(null);
+        setAuthMode('unauthenticated');
+        void AsyncStorage.removeItem('talentiq.auth.mode');
       })
       .catch(() => {
-        if (active) setAuthMode('unauthenticated');
+        if (active) {
+          setAuthUser(null);
+          setAuthMode('unauthenticated');
+        }
       })
       .finally(() => {
         if (active) setAuthHydrated(true);
@@ -609,7 +615,7 @@ export function TalentIQProvider({
 
       try {
         await AsyncStorage.removeItem('talentiq.auth.session');
-        await AsyncStorage.setItem('talentiq.auth.mode', 'guest');
+        await AsyncStorage.removeItem('talentiq.auth.mode');
       } catch {}
 
       try {

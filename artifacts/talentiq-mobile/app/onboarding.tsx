@@ -1,12 +1,12 @@
 import React, { useRef, useState } from 'react';
 import {
   Animated,
-  Dimensions,
   FlatList,
-  type FlatListProps,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
@@ -14,8 +14,6 @@ import { useRouter } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
 import { Wordmark } from '@/components/ui';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface OnboardingSlide {
   id: string;
@@ -63,28 +61,45 @@ const slides: OnboardingSlide[] = [
 export default function OnboardingScreen() {
   const colors = useColors();
   const router = useRouter();
+  const { width: windowWidth } = useWindowDimensions();
   const flatListRef = useRef<FlatList<OnboardingSlide>>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
   const [activeIndex, setActiveIndex] = useState(0);
 
-  const onViewableItemsChanged = useRef<NonNullable<FlatListProps<OnboardingSlide>['onViewableItemsChanged']>>(
-    ({ viewableItems }) => {
-      if (viewableItems.length > 0 && viewableItems[0]?.index != null) {
-        setActiveIndex(viewableItems[0].index);
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  };
+
+  const goToSlide = (nextIndex: number) => {
+    if (nextIndex >= 0 && nextIndex < slides.length) {
+      setActiveIndex(nextIndex);
+      try {
+        flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+      } catch {
+        flatListRef.current?.scrollToOffset({
+          offset: nextIndex * windowWidth,
+          animated: true,
+        });
       }
-    },
-  ).current;
+    } else if (nextIndex >= slides.length) {
+      router.replace('/(auth)/sign-up');
+    }
+  };
 
   const goNext = () => {
     if (activeIndex < slides.length - 1) {
-      flatListRef.current?.scrollToIndex({ index: activeIndex + 1, animated: true });
+      goToSlide(activeIndex + 1);
     } else {
       router.replace('/(auth)/sign-up');
     }
   };
 
-  const skip = () => {
-    router.replace('/role-select');
+  const skipToSignIn = () => {
+    router.replace('/(auth)/sign-in');
   };
 
   const isLast = activeIndex === slides.length - 1;
@@ -93,15 +108,18 @@ export default function OnboardingScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       {/* Header */}
       <View style={styles.header}>
+        <Pressable onPress={handleBack} hitSlop={10} style={styles.backBtn} accessibilityLabel="Back to welcome">
+          <Feather name="arrow-left" size={19} color={colors.foreground} />
+        </Pressable>
         <Wordmark />
-        <Pressable onPress={skip} hitSlop={12}>
-          <Text style={[styles.skipText, { color: colors.mutedForeground }]}>
-            {isLast ? '' : 'Skip'}
+        <Pressable onPress={skipToSignIn} hitSlop={12} style={styles.navLink}>
+          <Text style={[styles.skipText, { color: colors.primary }]}>
+            Sign In
           </Text>
         </Pressable>
       </View>
 
-      {/* Slides */}
+      {/* Slides Carousel */}
       <Animated.FlatList
         ref={flatListRef}
         data={slides}
@@ -110,43 +128,65 @@ export default function OnboardingScreen() {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         bounces={false}
+        getItemLayout={(_, index) => ({
+          length: windowWidth,
+          offset: windowWidth * index,
+          index,
+        })}
+        onScrollToIndexFailed={(info) => {
+          setTimeout(() => {
+            flatListRef.current?.scrollToOffset({
+              offset: info.index * windowWidth,
+              animated: true,
+            });
+          }, 60);
+        }}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-          { useNativeDriver: true },
+          { useNativeDriver: false },
         )}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={{ viewAreaCoveragePercentThreshold: 50 }}
-        renderItem={({ item, index }) => <Slide slide={item} index={index} scrollX={scrollX} />}
+        onMomentumScrollEnd={(e) => {
+          const offsetX = e.nativeEvent.contentOffset.x;
+          const newIdx = Math.round(offsetX / windowWidth);
+          if (newIdx >= 0 && newIdx < slides.length && newIdx !== activeIndex) {
+            setActiveIndex(newIdx);
+          }
+        }}
+        renderItem={({ item, index }) => (
+          <Slide
+            slide={item}
+            index={index}
+            scrollX={scrollX}
+            slideWidth={windowWidth}
+          />
+        )}
       />
 
       {/* Bottom controls */}
       <View style={styles.footer}>
-        {/* Dot indicators */}
+        {/* Clickable Dot indicators */}
         <View style={styles.dots}>
           {slides.map((_, i) => {
-            const inputRange = [
-              (i - 1) * SCREEN_WIDTH,
-              i * SCREEN_WIDTH,
-              (i + 1) * SCREEN_WIDTH,
-            ];
-            const dotWidth = scrollX.interpolate({
-              inputRange,
-              outputRange: [8, 22, 8],
-              extrapolate: 'clamp',
-            });
-            const opacity = scrollX.interpolate({
-              inputRange,
-              outputRange: [0.35, 1, 0.35],
-              extrapolate: 'clamp',
-            });
+            const isCurrent = activeIndex === i;
             return (
-              <Animated.View
+              <Pressable
                 key={i}
-                style={[
-                  styles.dot,
-                  { width: dotWidth, opacity, backgroundColor: colors.primary },
-                ]}
-              />
+                onPress={() => goToSlide(i)}
+                hitSlop={10}
+                accessibilityLabel={`Go to slide ${i + 1}`}
+                style={styles.dotTouchable}
+              >
+                <View
+                  style={[
+                    styles.dot,
+                    {
+                      width: isCurrent ? 24 : 8,
+                      opacity: isCurrent ? 1 : 0.35,
+                      backgroundColor: colors.primary,
+                    },
+                  ]}
+                />
+              </Pressable>
             );
           })}
         </View>
@@ -154,13 +194,15 @@ export default function OnboardingScreen() {
         {/* CTA Button */}
         <Pressable
           onPress={goNext}
+          accessibilityRole="button"
+          accessibilityLabel={isLast ? 'Create Account' : 'Continue to next slide'}
           style={({ pressed }) => [
             styles.cta,
             { backgroundColor: colors.primary, opacity: pressed ? 0.84 : 1 },
           ]}
         >
           <Text style={[styles.ctaText, { color: colors.primaryForeground }]}>
-            {isLast ? 'Get started' : 'Continue'}
+            {isLast ? 'Create Account' : 'Continue'}
           </Text>
           <Feather
             name={isLast ? 'arrow-up-right' : 'arrow-right'}
@@ -169,13 +211,15 @@ export default function OnboardingScreen() {
           />
         </Pressable>
 
-        {isLast ? (
-          <Pressable onPress={skip} style={styles.guestRow}>
-            <Text style={[styles.guestText, { color: colors.mutedForeground }]}>
-              Explore without an account
-            </Text>
-          </Pressable>
-        ) : null}
+        <Pressable onPress={skipToSignIn} style={styles.guestRow} hitSlop={8}>
+          <Text style={[styles.guestText, { color: colors.foreground }]}>
+            {isLast ? (
+              <>Already have an account? <Text style={{ color: colors.primary, fontFamily: 'Inter_600SemiBold' }}>Sign In</Text></>
+            ) : (
+              'Skip to Sign In'
+            )}
+          </Text>
+        </Pressable>
       </View>
     </SafeAreaView>
   );
@@ -185,39 +229,41 @@ function Slide({
   slide,
   index,
   scrollX,
+  slideWidth,
 }: {
   slide: OnboardingSlide;
   index: number;
   scrollX: Animated.Value;
+  slideWidth: number;
 }) {
   const colors = useColors();
 
   const inputRange = [
-    (index - 1) * SCREEN_WIDTH,
-    index * SCREEN_WIDTH,
-    (index + 1) * SCREEN_WIDTH,
+    (index - 1) * slideWidth,
+    index * slideWidth,
+    (index + 1) * slideWidth,
   ];
 
   const scale = scrollX.interpolate({
     inputRange,
-    outputRange: [0.88, 1, 0.88],
+    outputRange: [0.92, 1, 0.92],
     extrapolate: 'clamp',
   });
 
   const translateY = scrollX.interpolate({
     inputRange,
-    outputRange: [18, 0, 18],
+    outputRange: [14, 0, 14],
     extrapolate: 'clamp',
   });
 
   const opacity = scrollX.interpolate({
     inputRange,
-    outputRange: [0.55, 1, 0.55],
+    outputRange: [0.65, 1, 0.65],
     extrapolate: 'clamp',
   });
 
   return (
-    <View style={styles.slide}>
+    <View style={[styles.slide, { width: slideWidth }]}>
       {/* Hero card */}
       <Animated.View
         style={[
@@ -249,14 +295,14 @@ function Slide({
               <View style={[styles.scoreBarFill, { backgroundColor: '#F0A895', width: '78%' }]} />
             </View>
             <View style={styles.scoreLabels}>
-              <Text style={styles.scoreLabel}>Skills</Text>
+              <Text style={[styles.scoreLabel, { color: colors.background }]}>Skills</Text>
               <Text style={[styles.scoreValue, { color: colors.background }]}>78%</Text>
             </View>
             <View style={[styles.scoreBar, { backgroundColor: slide.accent }]}>
               <View style={[styles.scoreBarFill, { backgroundColor: '#F0A895', width: '91%' }]} />
             </View>
             <View style={styles.scoreLabels}>
-              <Text style={styles.scoreLabel}>Experience</Text>
+              <Text style={[styles.scoreLabel, { color: colors.background }]}>Experience</Text>
               <Text style={[styles.scoreValue, { color: colors.background }]}>91%</Text>
             </View>
           </View>
@@ -319,20 +365,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 8,
   },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...(Platform.OS === 'web' ? ({ cursor: 'pointer' } as any) : {}),
+  },
+  navLink: {
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    ...(Platform.OS === 'web' ? ({ cursor: 'pointer' } as any) : {}),
+  },
   skipText: { fontFamily: 'Inter_600SemiBold', fontSize: 14 },
   slide: {
-    width: SCREEN_WIDTH,
     paddingHorizontal: 22,
     alignItems: 'center',
-    gap: 24,
-    paddingTop: 12,
+    gap: 20,
+    paddingTop: 8,
   },
   heroCard: {
     width: '100%',
+    maxWidth: 680,
+    alignSelf: 'center',
     borderRadius: 32,
     padding: 26,
     minHeight: 380,
@@ -373,9 +433,9 @@ const styles = StyleSheet.create({
   },
   slideTitle: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 36,
-    lineHeight: 42,
-    letterSpacing: -1.4,
+    fontSize: 34,
+    lineHeight: 40,
+    letterSpacing: -1.3,
   },
   scorePreview: { gap: 8, marginTop: 4 },
   scoreBar: {
@@ -386,11 +446,11 @@ const styles = StyleSheet.create({
   scoreBarFill: { height: '100%', borderRadius: 999 },
   scoreLabels: { flexDirection: 'row', justifyContent: 'space-between' },
   scoreLabel: {
-    fontFamily: 'Inter_400Regular',
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.5)',
+    fontFamily: 'Inter_500Medium',
+    fontSize: 11,
+    opacity: 0.85,
   },
-  scoreValue: { fontFamily: 'Inter_700Bold', fontSize: 10 },
+  scoreValue: { fontFamily: 'Inter_700Bold', fontSize: 11 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 4 },
   skillChip: {
     flexDirection: 'row',
@@ -410,7 +470,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
     fontSize: 9,
     letterSpacing: 0.9,
-    color: 'rgba(255,255,255,0.5)',
+    color: 'rgba(255,255,255,0.65)',
   },
   assessTitle: {
     fontFamily: 'Inter_600SemiBold',
@@ -432,14 +492,23 @@ const styles = StyleSheet.create({
     lineHeight: 23,
     textAlign: 'center',
     paddingHorizontal: 12,
+    maxWidth: 640,
+    alignSelf: 'center',
   },
   footer: {
     paddingHorizontal: 24,
     paddingBottom: 16,
-    gap: 16,
+    gap: 14,
     alignItems: 'center',
+    width: '100%',
+    maxWidth: 680,
+    alignSelf: 'center',
   },
-  dots: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dots: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
+  dotTouchable: {
+    padding: 4,
+    ...(Platform.OS === 'web' ? ({ cursor: 'pointer' } as any) : {}),
+  },
   dot: { height: 6, borderRadius: 999 },
   cta: {
     width: '100%',
@@ -449,8 +518,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
+    ...(Platform.OS === 'web' ? ({ cursor: 'pointer' } as any) : {}),
   },
   ctaText: { fontFamily: 'Inter_600SemiBold', fontSize: 15 },
-  guestRow: { paddingVertical: 4 },
+  guestRow: {
+    paddingVertical: 4,
+    ...(Platform.OS === 'web' ? ({ cursor: 'pointer' } as any) : {}),
+  },
   guestText: { fontFamily: 'Inter_500Medium', fontSize: 13 },
 });

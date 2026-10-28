@@ -200,7 +200,7 @@ function SignInSection({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }) {
   const colors = useColors();
   const router = useRouter();
   const { errors } = useSignIn();
-  const { loginWithCredentials } = useTalentIQ();
+  const { loginWithCredentials, loginDemo } = useTalentIQ();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -302,13 +302,15 @@ function SignInSection({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }) {
 
       <Pressable
         testID="signin-submit"
-        disabled={!email.includes('@') || !password || sending}
+        disabled={sending}
         onPress={submit}
+        accessibilityRole="button"
         style={({ pressed }) => [
           styles.submitButton,
           {
             backgroundColor: colors.primary,
-            opacity: !email.includes('@') || !password || sending ? 0.55 : pressed ? 0.86 : 1,
+            opacity: sending ? 0.65 : pressed ? 0.86 : 1,
+            ...(Platform.OS === 'web' ? ({ cursor: 'pointer' } as any) : {}),
           },
         ]}
       >
@@ -350,6 +352,35 @@ function SignInSection({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }) {
             Alert.alert('Apple Sign-In', 'Connecting to Apple OAuth...');
           }}
         />
+      </View>
+
+      {/* ── Quick Demo Evaluation Access ── */}
+      <View style={styles.demoBlock}>
+        <Text style={[styles.demoPrompt, { color: colors.mutedForeground }]}>
+          Instant preview access:
+        </Text>
+        <View style={styles.demoButtonsRow}>
+          <Pressable
+            onPress={() => void loginDemo('candidate')}
+            style={({ pressed }) => [
+              styles.demoBtn,
+              { backgroundColor: colors.secondary, borderColor: colors.border, opacity: pressed ? 0.75 : 1 },
+            ]}
+          >
+            <Feather name="user" size={13} color={colors.primary} />
+            <Text style={[styles.demoBtnText, { color: colors.foreground }]}>Candidate Demo</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => void loginDemo('recruiter')}
+            style={({ pressed }) => [
+              styles.demoBtn,
+              { backgroundColor: colors.secondary, borderColor: colors.border, opacity: pressed ? 0.75 : 1 },
+            ]}
+          >
+            <Feather name="briefcase" size={13} color={colors.primary} />
+            <Text style={[styles.demoBtnText, { color: colors.foreground }]}>Recruiter Demo</Text>
+          </Pressable>
+        </View>
       </View>
 
       {/* ── Switcher to Sign Up ── */}
@@ -577,18 +608,15 @@ function SignUpSection({ onSwitchToSignIn }: { onSwitchToSignIn: () => void }) {
 
       <Pressable
         testID="signup-submit"
-        disabled={!email.includes('@') || password.length < 6 || fullName.trim().length < 2 || sendingCode}
+        disabled={sendingCode}
         onPress={submit}
+        accessibilityRole="button"
         style={({ pressed }) => [
           styles.submitButton,
           {
             backgroundColor: colors.primary,
-            opacity:
-              !email.includes('@') || password.length < 6 || fullName.trim().length < 2 || sendingCode
-                ? 0.55
-                : pressed
-                  ? 0.86
-                  : 1,
+            opacity: sendingCode ? 0.65 : pressed ? 0.86 : 1,
+            ...(Platform.OS === 'web' ? ({ cursor: 'pointer' } as any) : {}),
           },
         ]}
       >
@@ -1032,6 +1060,35 @@ const styles = StyleSheet.create({
   switchLinkText: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: 13,
+  },
+  demoBlock: {
+    gap: 8,
+    marginTop: 14,
+    alignItems: 'center',
+  },
+  demoPrompt: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 12,
+  },
+  demoButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+  },
+  demoBtn: {
+    flex: 1,
+    minHeight: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 8,
+  },
+  demoBtnText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
   },
   termsNotice: {
     fontFamily: 'Inter_400Regular',

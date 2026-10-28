@@ -10,24 +10,41 @@ import { UserRole } from '@/data/talentiq';
 export default function RoleSelectScreen() {
   const colors = useColors();
   const router = useRouter();
-  const { role, setRole, loginGuest, isUserSignedIn } = useTalentIQ();
+  const { role, setRole, isUserSignedIn } = useTalentIQ();
+
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  };
+
   const choose = (nextRole: UserRole) => {
+    setRole(nextRole);
     if (isUserSignedIn) {
-      setRole(nextRole);
       router.replace('/(tabs)');
     } else {
-      void loginGuest(nextRole);
+      router.push('/(auth)/sign-up');
     }
   };
 
   return (
     <Screen contentStyle={styles.page}>
-      <Wordmark />
+      <View style={styles.topRow}>
+        <Pressable onPress={handleBack} style={styles.backButton} accessibilityLabel="Back">
+          <Feather name="arrow-left" size={18} color={colors.foreground} />
+          <Text style={[styles.backText, { color: colors.foreground }]}>Back</Text>
+        </Pressable>
+        <Wordmark />
+        <View style={{ width: 48 }} />
+      </View>
+
       <View style={styles.intro}>
         <Eyebrow>ONE PLATFORM, TWO PERSPECTIVES</Eyebrow>
         <Text style={[styles.title, { color: colors.foreground }]}>How will you use TalentIQ?</Text>
         <Text style={[styles.copy, { color: colors.mutedForeground }]}>
-          Choose a view to explore. You can switch roles anytime in your profile.
+          Choose your primary view. You can customize your preferences anytime.
         </Text>
       </View>
       <RoleCard
@@ -44,9 +61,9 @@ export default function RoleSelectScreen() {
         selected={role === 'recruiter'}
         onPress={() => setRole('recruiter')}
       />
-      <PrimaryButton label="Continue" icon="arrow-right" onPress={() => choose(role)} />
+      <PrimaryButton label="Continue to Sign Up" icon="arrow-right" onPress={() => choose(role)} />
       <Text style={[styles.note, { color: colors.mutedForeground }]}>
-        You’re exploring a sample workspace. Your profile and saved activity stay on this device.
+        Create your verified account to start receiving AI-scored matches.
       </Text>
     </Screen>
   );
@@ -93,7 +110,21 @@ function RoleCard({
 
 const styles = StyleSheet.create({
   page: { flex: 1, gap: 18 },
-  intro: { gap: 10, marginTop: 22, marginBottom: 8 },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingRight: 10,
+  },
+  backText: { fontFamily: 'Inter_500Medium', fontSize: 13 },
+  intro: { gap: 10, marginTop: 14, marginBottom: 8 },
   title: { fontFamily: 'Inter_700Bold', fontSize: 31, lineHeight: 37, letterSpacing: -1.25 },
   copy: { fontFamily: 'Inter_400Regular', fontSize: 14, lineHeight: 21 },
   roleCard: { flexDirection: 'row', gap: 12, alignItems: 'center', padding: 16 },

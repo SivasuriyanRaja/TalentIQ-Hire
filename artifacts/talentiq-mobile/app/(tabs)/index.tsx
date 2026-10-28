@@ -171,7 +171,7 @@ function RecruiterHome({
         </Pressable>
       </View>
       <View style={[styles.recruiterHero, { backgroundColor: colors.foreground }]}>
-        <Eyebrow>YOUR TALENT PIPELINE</Eyebrow>
+        <Eyebrow color={colors.background}>YOUR TALENT PIPELINE</Eyebrow>
         <Text style={[styles.recruiterTitle, { color: colors.background }]}>Make the next great hire.</Text>
         <Text style={[styles.heroBody, { color: colors.background }]}>
           Find stronger signals, keep candidates moving, and spend more time in meaningful conversations.

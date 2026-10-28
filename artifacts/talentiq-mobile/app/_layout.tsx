@@ -74,18 +74,20 @@ function RootLayoutNav() {
     const inProtected =
       rootSegment === '(tabs)' ||
       rootSegment === 'hr-dashboard' ||
-      rootSegment === 'create-job';
+      rootSegment === 'create-job' ||
+      rootSegment === 'assessment' ||
+      rootSegment === 'ai-insights';
 
-    // If completely unauthenticated (neither signed in nor guest), CANNOT be in protected routes
-    if (!isUserSignedIn && authMode === 'unauthenticated' && inProtected) {
+    // If not authenticated, CANNOT access protected routes on launch -> redirect to welcome screen
+    if ((!isUserSignedIn || authMode !== 'authenticated') && inProtected) {
       if (router.canDismiss()) {
         router.dismissAll();
       }
       router.replace('/');
     }
 
-    // If signed in and on (auth) modals, dismiss them and send to tabs
-    if (isUserSignedIn && inAuthGroup) {
+    // If authenticated and on (auth) modals, dismiss them and send to dashboard
+    if (isUserSignedIn && authMode === 'authenticated' && inAuthGroup) {
       if (router.canDismiss()) {
         router.dismissAll();
       }

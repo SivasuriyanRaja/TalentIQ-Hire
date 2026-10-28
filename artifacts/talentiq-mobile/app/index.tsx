@@ -81,11 +81,25 @@ export default function WelcomeScreen() {
           <Feather name="arrow-up-right" size={18} color={colors.primaryForeground} />
         </Pressable>
         <Pressable
-          onPress={() => router.push('/role-select')}
-          style={styles.guestButton}
+          onPress={() => router.push('/(auth)/sign-in')}
+          style={({ pressed }) => [
+            styles.signInButton,
+            { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.86 : 1 },
+          ]}
         >
-          <Text style={[styles.guestText, { color: colors.mutedForeground }]}>Explore the app first</Text>
+          <Feather name="log-in" size={16} color={colors.foreground} />
+          <Text style={[styles.signInButtonText, { color: colors.foreground }]}>Sign in to your account</Text>
         </Pressable>
+        <View style={styles.registerRow}>
+          <Text style={[styles.registerPrompt, { color: colors.mutedForeground }]}>
+            New to TalentIQ?
+          </Text>
+          <Pressable onPress={() => router.push('/(auth)/sign-up')} hitSlop={6}>
+            <Text style={[styles.registerLink, { color: colors.primary }]}>
+              Create an account
+            </Text>
+          </Pressable>
+        </View>
         <Text style={[styles.legal, { color: colors.mutedForeground }]}>
           Thoughtful hiring starts with a clearer picture.
         </Text>
@@ -139,7 +153,24 @@ const styles = StyleSheet.create({
   valueBody: { fontFamily: 'Inter_400Regular', fontSize: 11, lineHeight: 16 },
   createButton: { minHeight: 54, borderRadius: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   createButtonText: { fontFamily: 'Inter_600SemiBold', fontSize: 15 },
-  guestButton: { alignItems: 'center', padding: 3 },
-  guestText: { fontFamily: 'Inter_500Medium', fontSize: 13 },
+  signInButton: {
+    minHeight: 52,
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 9,
+  },
+  signInButtonText: { fontFamily: 'Inter_600SemiBold', fontSize: 14 },
+  registerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingTop: 2,
+  },
+  registerPrompt: { fontFamily: 'Inter_400Regular', fontSize: 13 },
+  registerLink: { fontFamily: 'Inter_600SemiBold', fontSize: 13 },
   legal: { fontFamily: 'Inter_400Regular', fontSize: 11, textAlign: 'center', marginTop: 1 },
 });
