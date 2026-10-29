@@ -9,10 +9,25 @@ echo       TalentIQ AI - Starting Up
 echo  ========================================
 echo.
 
+REM -- Ensure npm & pnpm global bins are in PATH -----------------------
+set "PATH=%APPDATA%\npm;%LOCALAPPDATA%\pnpm;%ProgramFiles%\nodejs;%PATH%"
+
 REM -- Check pnpm is available ------------------------------------------
 where pnpm >nul 2>&1
 if %errorlevel% neq 0 (
-    echo  [ERROR] pnpm is not installed. Run: npm install -g pnpm
+    echo  [INFO] pnpm not found in active PATH. Attempting automatic recovery...
+    if exist "%APPDATA%\npm\pnpm.cmd" (
+        set "PATH=%APPDATA%\npm;%PATH%"
+    ) else (
+        echo  [INFO] Installing pnpm globally via npm...
+        call npm install -g pnpm
+    )
+)
+
+where pnpm >nul 2>&1
+if %errorlevel% neq 0 (
+    echo  [ERROR] Failed to locate or install pnpm.
+    echo  Please run in PowerShell/CMD: npm install -g pnpm
     pause
     exit /b 1
 )
@@ -39,14 +54,14 @@ if defined WIFI_IP (
 )
 
 echo  [1/2] Starting API server on port 5000...
-start "TalentIQ - API Server" cmd /k "cd /d %~dp0artifacts\api-server && echo Starting API server... && pnpm dev"
+start "TalentIQ - API Server" cmd /k "set PATH=%APPDATA%\npm;%LOCALAPPDATA%\pnpm;%ProgramFiles%\nodejs;%%PATH%% && cd /d %~dp0artifacts\api-server && echo Starting API server... && pnpm dev"
 
 echo  [2/2] Starting Expo mobile app...
 timeout /t 3 /nobreak >nul
 if defined WIFI_IP (
-    start "TalentIQ - Mobile App" cmd /k "cd /d %~dp0artifacts\talentiq-mobile && set REACT_NATIVE_PACKAGER_HOSTNAME=%WIFI_IP% && echo Starting Expo on %WIFI_IP%... && pnpm dev"
+    start "TalentIQ - Mobile App" cmd /k "set PATH=%APPDATA%\npm;%LOCALAPPDATA%\pnpm;%ProgramFiles%\nodejs;%%PATH%% && cd /d %~dp0artifacts\talentiq-mobile && set REACT_NATIVE_PACKAGER_HOSTNAME=%WIFI_IP% && echo Starting Expo on %WIFI_IP%... && pnpm dev"
 ) else (
-    start "TalentIQ - Mobile App" cmd /k "cd /d %~dp0artifacts\talentiq-mobile && echo Starting Expo... && pnpm dev"
+    start "TalentIQ - Mobile App" cmd /k "set PATH=%APPDATA%\npm;%LOCALAPPDATA%\pnpm;%ProgramFiles%\nodejs;%%PATH%% && cd /d %~dp0artifacts\talentiq-mobile && echo Starting Expo... && pnpm dev"
 )
 
 echo.

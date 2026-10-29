@@ -17,6 +17,15 @@ import {
 } from 'react-native';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import { Wordmark } from '@/components/ui';
+import { GoogleIcon } from '@/components/GoogleIcon';
+import {
+  GoogleAccountModal,
+  GoogleProfilePayload,
+} from '@/components/GoogleAccountModal';
+import {
+  isGoogleOAuthConfigured,
+  startGoogleOAuthFlow,
+} from '@/lib/googleAuth';
 import { UserRole } from '@/data/talentiq';
 import { useColors } from '@/hooks/useColors';
 import { useTalentIQ } from '@/state/TalentIQContext';
@@ -200,13 +209,64 @@ function SignInSection({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }) {
   const colors = useColors();
   const router = useRouter();
   const { errors } = useSignIn();
-  const { loginWithCredentials, loginDemo } = useTalentIQ();
+  const { loginWithCredentials, loginWithGoogle, loginDemo } = useTalentIQ();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
+
+  const handleGoogleClick = async () => {
+    setMessage('');
+    void Haptics.selectionAsync();
+
+    if (isGoogleOAuthConfigured()) {
+      setGoogleLoading(true);
+      try {
+        const oauthResult = await startGoogleOAuthFlow({ intent: 'sign-in' });
+        if (oauthResult?.token) {
+          const res = await loginWithGoogle({
+            email: '',
+            token: oauthResult.token,
+            intent: 'sign-in',
+          });
+          if (!res.success) {
+            setMessage(res.error || 'Google authentication failed.');
+          }
+          return;
+        } else if (oauthResult?.error) {
+          setMessage(oauthResult.error);
+          return;
+        }
+      } catch {
+        // Fall back to interactive account chooser
+      } finally {
+        setGoogleLoading(false);
+      }
+    }
+
+    setShowGoogleModal(true);
+  };
+
+  const handleSelectGoogleAccount = async (account: GoogleProfilePayload) => {
+    setMessage('');
+    const result = await loginWithGoogle({
+      email: account.email,
+      name: account.name,
+      picture: account.picture,
+      googleId: account.googleId,
+      intent: 'sign-in',
+    });
+
+    if (!result.success) {
+      setMessage(result.error || 'Could not sign in with Google. Please try again.');
+      throw new Error(result.error);
+    }
+    setShowGoogleModal(false);
+  };
 
   const submit = async () => {
     setMessage('');
@@ -333,26 +393,20 @@ function SignInSection({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }) {
         <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
       </View>
 
-      <View style={styles.socialRow}>
-        <SocialButton
-          icon="globe"
-          label="Google"
-          colors={colors}
-          onPress={() => {
-            void Haptics.selectionAsync();
-            Alert.alert('Google Sign-In', 'Connecting to Google OAuth...');
-          }}
-        />
-        <SocialButton
-          icon="smartphone"
-          label="Apple"
-          colors={colors}
-          onPress={() => {
-            void Haptics.selectionAsync();
-            Alert.alert('Apple Sign-In', 'Connecting to Apple OAuth...');
-          }}
-        />
-      </View>
+      <GoogleAuthButton
+        label="Continue with Google"
+        colors={colors}
+        loading={googleLoading}
+        onPress={handleGoogleClick}
+        testID="signin-google-btn"
+      />
+
+      <GoogleAccountModal
+        visible={showGoogleModal}
+        intent="sign-in"
+        onClose={() => setShowGoogleModal(false)}
+        onSelectAccount={handleSelectGoogleAccount}
+      />
 
       {/* ── Quick Demo Evaluation Access ── */}
       <View style={styles.demoBlock}>
@@ -404,7 +458,7 @@ function SignUpSection({ onSwitchToSignIn }: { onSwitchToSignIn: () => void }) {
   const colors = useColors();
   const router = useRouter();
   const { errors } = useSignUp();
-  const { role, setRole, registerWithCredentials } = useTalentIQ();
+  const { role, setRole, registerWithCredentials, loginWithGoogle } = useTalentIQ();
 
   const [selectedRole, setSelectedRole] = useState<UserRole>(role);
   const [fullName, setFullName] = useState('');
@@ -413,6 +467,62 @@ function SignUpSection({ onSwitchToSignIn }: { onSwitchToSignIn: () => void }) {
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState('');
   const [sendingCode, setSendingCode] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
+
+  const handleGoogleClick = async () => {
+    setMessage('');
+    void Haptics.selectionAsync();
+
+    if (isGoogleOAuthConfigured()) {
+      setGoogleLoading(true);
+      try {
+        const oauthResult = await startGoogleOAuthFlow({
+          intent: 'sign-up',
+          role: selectedRole,
+        });
+        if (oauthResult?.token) {
+          const res = await loginWithGoogle({
+            email: '',
+            token: oauthResult.token,
+            role: selectedRole,
+            intent: 'sign-up',
+          });
+          if (!res.success) {
+            setMessage(res.error || 'Google account creation failed.');
+          }
+          return;
+        } else if (oauthResult?.error) {
+          setMessage(oauthResult.error);
+          return;
+        }
+      } catch {
+        // Fall back to account chooser
+      } finally {
+        setGoogleLoading(false);
+      }
+    }
+
+    setShowGoogleModal(true);
+  };
+
+  const handleSelectGoogleAccount = async (account: GoogleProfilePayload) => {
+    setMessage('');
+    const result = await loginWithGoogle({
+      email: account.email,
+      name: account.name,
+      picture: account.picture,
+      googleId: account.googleId,
+      role: selectedRole,
+      intent: 'sign-up',
+    });
+
+    if (!result.success) {
+      setMessage(result.error || 'Could not create account with Google. Please try again.');
+      throw new Error(result.error);
+    }
+    setShowGoogleModal(false);
+  };
 
   const strength = getPasswordStrength(password);
 
@@ -632,6 +742,29 @@ function SignUpSection({ onSwitchToSignIn }: { onSwitchToSignIn: () => void }) {
         )}
       </Pressable>
 
+      {/* ── Social / Alternative Section ── */}
+      <View style={styles.dividerRow}>
+        <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+        <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>or create account with</Text>
+        <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+      </View>
+
+      <GoogleAuthButton
+        label={selectedRole === 'recruiter' ? 'Sign up as Recruiter with Google' : 'Sign up with Google'}
+        colors={colors}
+        loading={googleLoading}
+        onPress={handleGoogleClick}
+        testID="signup-google-btn"
+      />
+
+      <GoogleAccountModal
+        visible={showGoogleModal}
+        intent="sign-up"
+        selectedRole={selectedRole}
+        onClose={() => setShowGoogleModal(false)}
+        onSelectAccount={handleSelectGoogleAccount}
+      />
+
       <View style={styles.switchRow}>
         <Text style={[styles.switchText, { color: colors.mutedForeground }]}>Already have an account?</Text>
         <Pressable onPress={onSwitchToSignIn} hitSlop={6}>
@@ -770,6 +903,50 @@ function SocialButton({
     >
       <Feather name={icon} size={15} color={colors.foreground} />
       <Text style={[styles.socialButtonText, { color: colors.foreground }]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function GoogleAuthButton({
+  label = 'Continue with Google',
+  colors,
+  onPress,
+  loading = false,
+  testID = 'google-auth-btn',
+}: {
+  label?: string;
+  colors: ReturnType<typeof useColors>;
+  onPress: () => void;
+  loading?: boolean;
+  testID?: string;
+}) {
+  return (
+    <Pressable
+      testID={testID}
+      disabled={loading}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [
+        styles.googleAuthBtn,
+        {
+          backgroundColor: colors.card,
+          borderColor: colors.border,
+          opacity: loading ? 0.7 : pressed ? 0.82 : 1,
+          ...(Platform.OS === 'web' ? ({ cursor: 'pointer' } as any) : {}),
+        },
+      ]}
+    >
+      {loading ? (
+        <ActivityIndicator size="small" color={colors.primary} />
+      ) : (
+        <View style={styles.googleBtnInner}>
+          <GoogleIcon size={19} />
+          <Text style={[styles.googleBtnText, { color: colors.foreground }]}>
+            {label}
+          </Text>
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -1045,6 +1222,27 @@ const styles = StyleSheet.create({
   socialButtonText: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: 13,
+  },
+  googleAuthBtn: {
+    height: 50,
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    marginTop: 2,
+  },
+  googleBtnInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  googleBtnText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 14,
+    letterSpacing: -0.2,
   },
   switchRow: {
     flexDirection: 'row',

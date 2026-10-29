@@ -341,10 +341,13 @@ export interface IUser extends Document {
   userId: string;
   name: string;
   email: string;
-  passwordHash: string;
+  passwordHash?: string;
   role: "candidate" | "recruiter";
   headline?: string;
   location?: string;
+  avatarUrl?: string;
+  googleId?: string;
+  authProvider?: "local" | "google" | "clerk";
   createdAt: Date;
   updatedAt: Date;
 }
@@ -354,10 +357,13 @@ const UserSchema = new Schema<IUser>(
     userId: { type: String, required: true, unique: true, index: true },
     name: { type: String, required: true, maxlength: 120 },
     email: { type: String, required: true, unique: true, index: true, lowercase: true, trim: true },
-    passwordHash: { type: String, required: true },
+    passwordHash: { type: String, required: false },
     role: { type: String, enum: ["candidate", "recruiter"], default: "candidate" },
     headline: { type: String, default: "" },
     location: { type: String, default: "" },
+    avatarUrl: { type: String, default: "" },
+    googleId: { type: String, sparse: true, index: true },
+    authProvider: { type: String, enum: ["local", "google", "clerk"], default: "local" },
   },
   { timestamps: true },
 );

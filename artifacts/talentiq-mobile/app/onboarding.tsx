@@ -268,7 +268,7 @@ function Slide({
       <Animated.View
         style={[
           styles.heroCard,
-          { backgroundColor: colors.foreground, transform: [{ scale }, { translateY }], opacity },
+          { backgroundColor: colors.hero || '#182321', transform: [{ scale }, { translateY }], opacity },
         ]}
       >
         {/* Decorative orbs */}
@@ -284,7 +284,7 @@ function Slide({
         </View>
 
         {/* Title */}
-        <Text style={[styles.slideTitle, { color: colors.background }]}>
+        <Text style={[styles.slideTitle, { color: '#FFFFFF' }]}>
           {slide.title}
         </Text>
 
@@ -295,15 +295,15 @@ function Slide({
               <View style={[styles.scoreBarFill, { backgroundColor: '#F0A895', width: '78%' }]} />
             </View>
             <View style={styles.scoreLabels}>
-              <Text style={[styles.scoreLabel, { color: colors.background }]}>Skills</Text>
-              <Text style={[styles.scoreValue, { color: colors.background }]}>78%</Text>
+              <Text style={[styles.scoreLabel, { color: 'rgba(255, 255, 255, 0.85)' }]}>Skills</Text>
+              <Text style={[styles.scoreValue, { color: '#FFFFFF' }]}>78%</Text>
             </View>
             <View style={[styles.scoreBar, { backgroundColor: slide.accent }]}>
               <View style={[styles.scoreBarFill, { backgroundColor: '#F0A895', width: '91%' }]} />
             </View>
             <View style={styles.scoreLabels}>
-              <Text style={[styles.scoreLabel, { color: colors.background }]}>Experience</Text>
-              <Text style={[styles.scoreValue, { color: colors.background }]}>91%</Text>
+              <Text style={[styles.scoreLabel, { color: 'rgba(255, 255, 255, 0.85)' }]}>Experience</Text>
+              <Text style={[styles.scoreValue, { color: '#FFFFFF' }]}>91%</Text>
             </View>
           </View>
         ) : null}
@@ -314,7 +314,7 @@ function Slide({
             {['React Native', 'TypeScript', 'GraphQL'].map((skill) => (
               <View key={skill} style={[styles.skillChip, { backgroundColor: slide.accent }]}>
                 <Feather name="check" size={10} color="#F0A895" />
-                <Text style={styles.skillChipText}>{skill}</Text>
+                <Text style={[styles.skillChipText, { color: '#FFFFFF' }]}>{skill}</Text>
               </View>
             ))}
             {['Kubernetes'].map((skill) => (
@@ -330,7 +330,7 @@ function Slide({
         {index === 2 ? (
           <View style={[styles.assessCard, { backgroundColor: slide.accent }]}>
             <Text style={styles.assessEyebrow}>SKILL CHECK</Text>
-            <Text style={[styles.assessTitle, { color: colors.background }]}>
+            <Text style={[styles.assessTitle, { color: '#FFFFFF' }]}>
               What rendering strategy does React Native use?
             </Text>
             {['Native bridge', 'JSI (direct)'].map((opt, i) => (
@@ -341,7 +341,7 @@ function Slide({
                   { backgroundColor: i === 1 ? '#F0A895' : 'rgba(255,255,255,0.08)' },
                 ]}
               >
-                <Text style={[styles.assessOptionText, { color: i === 1 ? '#182321' : colors.background }]}>
+                <Text style={[styles.assessOptionText, { color: i === 1 ? '#182321' : '#FFFFFF' }]}>
                   {opt}
                 </Text>
                 {i === 1 ? <Feather name="check" size={12} color="#182321" /> : null}

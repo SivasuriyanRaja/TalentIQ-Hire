@@ -171,7 +171,7 @@ export default function JobDetailScreen() {
             </Pressable>
           </View>
           {analysis.data ? (
-            <View style={styles.analysisBlock}>
+            <View style={[styles.analysisBlock, { borderTopColor: colors.border }]}>
               <View style={styles.analysisHeader}>
                 <Text style={[styles.analysisScore, { color: colors.foreground }]}>
                   {analysis.data.matchScore}% match
@@ -189,7 +189,7 @@ export default function JobDetailScreen() {
               {analysis.data.strengths.map((strength) => (
                 <View key={strength} style={styles.insight}>
                   <Feather name="check" size={14} color={colors.primary} />
-                  <Text style={[styles.insightText, { color: colors.mutedForeground }]}>{strength}</Text>
+                  <Text style={[styles.insightText, { color: colors.foreground, opacity: 0.9 }]}>{strength}</Text>
                 </View>
               ))}
               {analysis.data.missingSkills.length ? (

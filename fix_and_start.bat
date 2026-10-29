@@ -9,6 +9,9 @@ echo       TalentIQ AI - Fix and Start
 echo  ========================================
 echo.
 
+REM -- Ensure npm & pnpm global bins are in PATH -----------------------
+set "PATH=%APPDATA%\npm;%LOCALAPPDATA%\pnpm;%ProgramFiles%\nodejs;%PATH%"
+
 REM -- Check Node.js ----------------------------------------------------
 where node >nul 2>&1
 if %errorlevel% neq 0 (
@@ -25,7 +28,11 @@ REM -- Check pnpm -------------------------------------------------------
 where pnpm >nul 2>&1
 if %errorlevel% neq 0 (
     echo  Installing pnpm globally...
-    npm install -g pnpm
+    if exist "%APPDATA%\npm\pnpm.cmd" (
+        set "PATH=%APPDATA%\npm;%PATH%"
+    ) else (
+        call npm install -g pnpm
+    )
 )
 
 for /f "tokens=*" %%v in ('pnpm --version') do set PNPM_VER=%%v
@@ -66,9 +73,9 @@ if not exist "artifacts\talentiq-mobile\.env" (
 REM -- Start services ----------------------------------------------------
 echo  Starting services...
 echo.
-start "TalentIQ - API Server" cmd /k "cd /d %~dp0artifacts\api-server && pnpm dev"
+start "TalentIQ - API Server" cmd /k "set PATH=%APPDATA%\npm;%LOCALAPPDATA%\pnpm;%ProgramFiles%\nodejs;%%PATH%% && cd /d %~dp0artifacts\api-server && pnpm dev"
 timeout /t 4 /nobreak >nul
-start "TalentIQ - Mobile App" cmd /k "cd /d %~dp0artifacts\talentiq-mobile && pnpm dev"
+start "TalentIQ - Mobile App" cmd /k "set PATH=%APPDATA%\npm;%LOCALAPPDATA%\pnpm;%ProgramFiles%\nodejs;%%PATH%% && cd /d %~dp0artifacts\talentiq-mobile && pnpm dev"
 
 echo.
 echo  * All done! Both windows are starting.

@@ -37,18 +37,18 @@ export default function WelcomeScreen() {
         </Pressable>
       </View>
 
-      <View style={[styles.hero, { backgroundColor: colors.foreground }]}>
+      <View style={[styles.hero, { backgroundColor: colors.hero || '#182321' }]}>
         <View style={styles.heroOrbLarge} />
         <View style={styles.heroOrbSmall} />
         <View style={styles.heroBadge}>
-          <Feather name="zap" size={13} color={colors.primaryForeground} />
-          <Text style={[styles.heroBadgeText, { color: colors.primaryForeground }]}>HIRING, REIMAGINED</Text>
+          <Feather name="zap" size={13} color="#F0A895" />
+          <Text style={[styles.heroBadgeText, { color: '#F0A895' }]}>HIRING, REIMAGINED</Text>
         </View>
-        <Text style={[styles.heroTitle, { color: colors.background }]}>
+        <Text style={[styles.heroTitle, { color: '#FFFFFF' }]}>
           Find the{'\n'}work you’re{'\n'}
           <Text style={{ color: '#F0A895' }}>made for.</Text>
         </Text>
-        <Text style={[styles.heroCopy, { color: colors.background }]}>
+        <Text style={[styles.heroCopy, { color: 'rgba(255, 255, 255, 0.8)' }]}>
           More signal. Better conversations. A match that makes sense for everyone.
         </Text>
         <View style={styles.matchPreview}>
@@ -56,11 +56,11 @@ export default function WelcomeScreen() {
             <Image source={require('@/assets/images/icon.png')} style={styles.previewIcon} />
           </View>
           <View style={styles.matchTextBlock}>
-            <Text style={[styles.matchTitle, { color: colors.background }]}>Your next great fit</Text>
-            <Text style={[styles.matchSub, { color: colors.background }]}>AI-powered, human-first</Text>
+            <Text style={[styles.matchTitle, { color: '#FFFFFF' }]}>Your next great fit</Text>
+            <Text style={[styles.matchSub, { color: 'rgba(255, 255, 255, 0.7)' }]}>AI-powered, human-first</Text>
           </View>
           <View style={styles.matchScore}>
-            <Text style={[styles.matchPercent, { color: colors.foreground }]}>94</Text>
+            <Text style={[styles.matchPercent, { color: '#182321' }]}>94</Text>
           </View>
         </View>
       </View>

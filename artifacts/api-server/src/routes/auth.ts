@@ -25,6 +25,9 @@ interface StoredUser {
   role: "candidate" | "recruiter";
   headline?: string;
   location?: string;
+  avatarUrl?: string;
+  googleId?: string;
+  authProvider?: "local" | "google" | "clerk";
   createdAt: string;
 }
 
@@ -278,6 +281,232 @@ async function handleLogin(req: Request, res: Response) {
 router.post("/auth/login", handleLogin);
 router.post("/auth/sign-in", handleLogin);
 
+// ─── POST /auth/google & /auth/google-sign-in ─────────────────────────────────
+
+async function handleGoogleAuth(req: Request, res: Response) {
+  try {
+    const { token: googleAuthToken, email, name, picture, googleId, role, intent } = req.body ?? {};
+
+    let userEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+    let userName = typeof name === "string" ? name.trim() : "";
+    let userPicture = typeof picture === "string" ? picture.trim() : "";
+    let userGoogleId = typeof googleId === "string" ? googleId.trim() : "";
+
+    // If an OAuth token is supplied, verify it with Google APIs
+    if (googleAuthToken && typeof googleAuthToken === "string") {
+      try {
+        const gRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+          headers: { Authorization: `Bearer ${googleAuthToken}` },
+        });
+        if (gRes.ok) {
+          const gData = (await gRes.json()) as any;
+          if (gData.email) userEmail = gData.email.trim().toLowerCase();
+          if (gData.name && !userName) userName = gData.name.trim();
+          if (gData.picture && !userPicture) userPicture = gData.picture;
+          if (gData.sub && !userGoogleId) userGoogleId = gData.sub;
+        } else {
+          const idRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(googleAuthToken)}`);
+          if (idRes.ok) {
+            const idData = (await idRes.json()) as any;
+            if (idData.email) userEmail = idData.email.trim().toLowerCase();
+            if (idData.name && !userName) userName = idData.name.trim();
+            if (idData.picture && !userPicture) userPicture = idData.picture;
+            if (idData.sub && !userGoogleId) userGoogleId = idData.sub;
+          }
+        }
+      } catch (tokenErr) {
+        logger.warn({ err: tokenErr }, "Google token verification via HTTP failed, falling back to payload");
+      }
+    }
+
+    if (!userEmail || !userEmail.includes("@") || !userEmail.includes(".")) {
+      return res.status(400).json({
+        error: "A valid Google account email is required to continue.",
+      });
+    }
+
+    if (!userName) {
+      userName = userEmail.split("@")[0] || "Google User";
+    }
+
+    const cleanRole: "candidate" | "recruiter" =
+      role === "recruiter" ? "recruiter" : "candidate";
+
+    // 1. Look up existing user in local disk store
+    const localUsers = loadLocalUsers();
+    let targetUser: StoredUser | undefined = Object.values(localUsers).find(
+      (u) =>
+        u.email === userEmail ||
+        Boolean(userGoogleId && u.googleId === userGoogleId),
+    );
+
+    // 2. Look up existing user in MongoDB Atlas
+    let mongoUser: any = null;
+    try {
+      const orConditions: any[] = [{ email: userEmail }];
+      if (userGoogleId) orConditions.push({ googleId: userGoogleId });
+      mongoUser = await User.findOne({ $or: orConditions }).lean();
+    } catch (dbErr) {
+      logger.warn({ err: dbErr }, "Mongo lookup during Google auth failed");
+    }
+
+    const isNewUser = !targetUser && !mongoUser;
+
+    if (!isNewUser) {
+      // Existing User: Log In & merge Google profile info
+      const effectiveUserId = targetUser?.userId || mongoUser?.userId;
+      const effectiveRole = targetUser?.role || mongoUser?.role || cleanRole;
+      const effectiveName = targetUser?.name || mongoUser?.name || userName;
+
+      targetUser = {
+        userId: effectiveUserId,
+        name: effectiveName,
+        email: userEmail,
+        salt: targetUser?.salt || "",
+        hash: targetUser?.hash || "",
+        role: effectiveRole,
+        avatarUrl: userPicture || targetUser?.avatarUrl || mongoUser?.avatarUrl || "",
+        googleId: userGoogleId || targetUser?.googleId || mongoUser?.googleId || "",
+        authProvider: "google",
+        createdAt: targetUser?.createdAt || mongoUser?.createdAt?.toISOString?.() || new Date().toISOString(),
+      };
+      localUsers[effectiveUserId] = targetUser;
+      saveLocalUsers(localUsers);
+
+      try {
+        await User.findOneAndUpdate(
+          { userId: effectiveUserId },
+          {
+            $set: {
+              avatarUrl: userPicture || undefined,
+              googleId: userGoogleId || undefined,
+              authProvider: "google",
+            },
+          },
+        );
+        if (userPicture) {
+          await UserProfile.findOneAndUpdate(
+            { userId: effectiveUserId },
+            { $set: { avatarUrl: userPicture } },
+          );
+        }
+      } catch (updateErr) {
+        logger.warn({ err: updateErr }, "Mongo update for existing Google user failed");
+      }
+
+      const token = generateToken(effectiveUserId);
+      const safeUser = {
+        id: effectiveUserId,
+        userId: effectiveUserId,
+        name: effectiveName,
+        email: userEmail,
+        role: effectiveRole,
+        avatarUrl: targetUser.avatarUrl,
+        authProvider: "google" as const,
+      };
+
+      logger.info(
+        { userId: effectiveUserId, email: userEmail, isNewUser: false },
+        "Google authentication successful for existing user",
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Signed in successfully with Google.",
+        token,
+        user: safeUser,
+        isNewUser: false,
+      });
+    }
+
+    // New User: Create Account with Google
+    const userId = `user_g_${crypto.randomBytes(8).toString("hex")}`;
+    const salt = crypto.randomBytes(16).toString("hex");
+    const hash = hashPassword(crypto.randomBytes(32).toString("hex"), salt);
+
+    const newUser: StoredUser = {
+      userId,
+      name: userName,
+      email: userEmail,
+      salt,
+      hash,
+      role: cleanRole,
+      avatarUrl: userPicture || "",
+      googleId: userGoogleId || "",
+      authProvider: "google",
+      createdAt: new Date().toISOString(),
+    };
+
+    localUsers[userId] = newUser;
+    saveLocalUsers(localUsers);
+
+    try {
+      await User.create({
+        userId,
+        name: userName,
+        email: userEmail,
+        passwordHash: `${salt}:${hash}`,
+        role: cleanRole,
+        avatarUrl: userPicture || "",
+        googleId: userGoogleId || "",
+        authProvider: "google",
+      });
+
+      await UserProfile.findOneAndUpdate(
+        { userId },
+        {
+          userId,
+          name: userName,
+          headline:
+            cleanRole === "recruiter"
+              ? "Hiring Manager / Recruiter"
+              : "Candidate | TalentIQ Member",
+          location: "",
+          skills: [],
+          extractedSkills: [],
+        },
+        { upsert: true, new: true },
+      );
+    } catch (dbErr: any) {
+      logger.warn(
+        { err: dbErr?.message },
+        "Mongo write failed during Google account creation, saved to local store",
+      );
+    }
+
+    const token = generateToken(userId);
+    const safeUser = {
+      id: userId,
+      userId,
+      name: userName,
+      email: userEmail,
+      role: cleanRole,
+      avatarUrl: userPicture,
+      authProvider: "google" as const,
+    };
+
+    logger.info(
+      { userId, email: userEmail, role: cleanRole, isNewUser: true },
+      "New account created successfully with Google",
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "Account created successfully with Google!",
+      token,
+      user: safeUser,
+      isNewUser: true,
+    });
+  } catch (err: any) {
+    logger.error({ err }, "Google authentication error");
+    return res.status(500).json({ error: "Failed to authenticate with Google. Please try again." });
+  }
+}
+
+router.post("/auth/google", handleGoogleAuth);
+router.post("/auth/google-sign-in", handleGoogleAuth);
+router.post("/auth/google-sign-up", handleGoogleAuth);
+
 // ─── GET /auth/me ─────────────────────────────────────────────────────────────
 
 router.get("/auth/me", async (req: Request, res: Response) => {
@@ -308,6 +537,9 @@ router.get("/auth/me", async (req: Request, res: Response) => {
             salt: "",
             hash: "",
             role: (mongoUser.role as any) || "candidate",
+            avatarUrl: mongoUser.avatarUrl || "",
+            googleId: mongoUser.googleId || "",
+            authProvider: mongoUser.authProvider || "local",
             createdAt: mongoUser.createdAt?.toISOString?.() || "",
           };
         }
@@ -326,6 +558,8 @@ router.get("/auth/me", async (req: Request, res: Response) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        avatarUrl: user.avatarUrl || "",
+        authProvider: user.authProvider || "local",
       },
     });
   } catch (err: any) {

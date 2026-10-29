@@ -41,6 +41,8 @@ export interface AuthUser {
   name: string;
   role: UserRole;
   isDemo?: boolean;
+  avatarUrl?: string;
+  authProvider?: 'local' | 'google' | 'clerk';
 }
 
 export type AuthMode = 'authenticated' | 'guest' | 'unauthenticated';
@@ -137,6 +139,15 @@ export interface TalentIQContextValue extends TalentIQState {
     email: string;
     password: string;
   }) => Promise<{ success: boolean; error?: string }>;
+  loginWithGoogle: (params: {
+    email: string;
+    name?: string;
+    picture?: string;
+    googleId?: string;
+    role?: UserRole;
+    intent?: 'sign-in' | 'sign-up';
+    token?: string;
+  }) => Promise<{ success: boolean; isNewUser?: boolean; error?: string }>;
   loginDemo: (role: 'candidate' | 'recruiter') => Promise<void>;
   loginGuest: (role?: UserRole) => Promise<void>;
   logout: () => Promise<void>;
@@ -555,6 +566,95 @@ export function TalentIQProvider({
     [router],
   );
 
+  const loginWithGoogle = useCallback(
+    async ({
+      email,
+      name,
+      picture,
+      googleId,
+      role = 'candidate',
+      intent = 'sign-in',
+      token,
+    }: {
+      email: string;
+      name?: string;
+      picture?: string;
+      googleId?: string;
+      role?: UserRole;
+      intent?: 'sign-in' | 'sign-up';
+      token?: string;
+    }): Promise<{ success: boolean; isNewUser?: boolean; error?: string }> => {
+      try {
+        const endpoint = getApiEndpoint('/auth/google');
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            name,
+            picture,
+            googleId,
+            role,
+            intent,
+            token,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          return {
+            success: false,
+            error:
+              data.error ||
+              'Failed to authenticate with Google. Please try again.',
+          };
+        }
+
+        const loggedUser: AuthUser = {
+          id: data.user.id || data.user.userId,
+          email: data.user.email,
+          name: data.user.name,
+          role: (data.user.role as UserRole) || role,
+          avatarUrl: data.user.avatarUrl,
+          authProvider: 'google',
+          isDemo: false,
+        };
+
+        setAuthUser(loggedUser);
+        setAuthMode('authenticated');
+        setState((current) => ({
+          ...current,
+          role: loggedUser.role,
+          profile: {
+            ...current.profile,
+            name: loggedUser.name || current.profile.name,
+          },
+        }));
+
+        await Promise.all([
+          AsyncStorage.setItem(
+            'talentiq.auth.session',
+            JSON.stringify(loggedUser),
+          ),
+          AsyncStorage.setItem('talentiq.auth.mode', 'authenticated'),
+          data.token
+            ? AsyncStorage.setItem('talentiq.auth.token', data.token)
+            : Promise.resolve(),
+        ]);
+
+        router.replace('/(tabs)');
+        return { success: true, isNewUser: data.isNewUser };
+      } catch (err: any) {
+        return {
+          success: false,
+          error:
+            err?.message ||
+            'Network error connecting to TalentIQ server. Please try again.',
+        };
+      }
+    },
+    [router],
+  );
+
   const loginDemo = useCallback(
     async (demoRole: 'candidate' | 'recruiter') => {
       const demoUser: AuthUser = {
@@ -818,6 +918,7 @@ export function TalentIQProvider({
       syncNow,
       registerWithCredentials,
       loginWithCredentials,
+      loginWithGoogle,
       loginDemo,
       loginGuest,
       logout,
@@ -843,6 +944,7 @@ export function TalentIQProvider({
       syncNow,
       registerWithCredentials,
       loginWithCredentials,
+      loginWithGoogle,
       loginDemo,
       loginGuest,
       logout,

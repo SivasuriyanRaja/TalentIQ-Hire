@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import {
   Avatar,
   Card,
@@ -25,6 +25,7 @@ const statusColors: Record<ApplicationStatus, 'primary' | 'accent' | 'muted' | '
 
 export default function ApplicationsScreen() {
   const colors = useColors();
+  const isDark = useColorScheme() === 'dark';
   const router = useRouter();
   const { role, applications, jobs, attempts, candidateStatuses, setCandidateStatus } = useTalentIQ();
   const [selectedCandidate, setSelectedCandidate] = useState<typeof sampleCandidates[0] | null>(null);
@@ -322,10 +323,10 @@ export default function ApplicationsScreen() {
                         {
                           backgroundColor:
                             attempt.proxyRiskLevel === 'HIGH'
-                              ? '#FFEBE6'
+                              ? (isDark ? 'rgba(216, 93, 73, 0.22)' : '#FFEBE6')
                               : attempt.proxyRiskLevel === 'MEDIUM'
-                                ? '#FEF3C7'
-                                : '#D1FAE5',
+                                ? (isDark ? 'rgba(245, 158, 11, 0.22)' : '#FEF3C7')
+                                : (isDark ? 'rgba(16, 185, 129, 0.22)' : '#D1FAE5'),
                         },
                       ]}
                     >
@@ -334,10 +335,10 @@ export default function ApplicationsScreen() {
                         size={10}
                         color={
                           attempt.proxyRiskLevel === 'HIGH'
-                            ? '#D85D49'
+                            ? (isDark ? '#F87171' : '#D85D49')
                             : attempt.proxyRiskLevel === 'MEDIUM'
-                              ? '#B45309'
-                              : '#065F46'
+                              ? (isDark ? '#FBBF24' : '#B45309')
+                              : (isDark ? '#34D399' : '#065F46')
                         }
                       />
                       <Text
@@ -346,10 +347,10 @@ export default function ApplicationsScreen() {
                           {
                             color:
                               attempt.proxyRiskLevel === 'HIGH'
-                                ? '#D85D49'
+                                ? (isDark ? '#F87171' : '#D85D49')
                                 : attempt.proxyRiskLevel === 'MEDIUM'
-                                  ? '#B45309'
-                                  : '#065F46',
+                                  ? (isDark ? '#FBBF24' : '#B45309')
+                                  : (isDark ? '#34D399' : '#065F46'),
                           },
                         ]}
                       >

@@ -28,35 +28,41 @@ function ScoreRing({
   strokeWidth?: number;
 }) {
   const colors = useColors();
-  const animValue = useRef(new Animated.Value(0)).current;
-  const [displayScore, setDisplayScore] = useState(0);
-
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
+  const [displayScore, setDisplayScore] = useState(0);
+  const [animatedOffset, setAnimatedOffset] = useState(circumference);
 
   useEffect(() => {
-    Animated.timing(animValue, {
-      toValue: score,
-      duration: 1200,
-      useNativeDriver: false,
-    }).start();
-    const id = setInterval(() => {
-      animValue.addListener(({ value }) => setDisplayScore(Math.round(value)));
-    }, 16);
-    return () => {
-      clearInterval(id);
-      animValue.removeAllListeners();
-    };
-  }, [score, animValue]);
+    let startTimestamp: number | null = null;
+    const duration = 1100;
+    const targetOffset = circumference - (score / 100) * circumference;
+    let animFrame: number;
 
-  const strokeDashoffset = animValue.interpolate({
-    inputRange: [0, 100],
-    outputRange: [circumference, 0],
-  });
+    const step = (timestamp: number) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      const easeOut = 1 - Math.pow(1 - progress, 3);
+
+      setDisplayScore(Math.round(score * easeOut));
+      setAnimatedOffset(circumference - (circumference - targetOffset) * easeOut);
+
+      if (progress < 1) {
+        animFrame = requestAnimationFrame(step);
+      }
+    };
+
+    animFrame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(animFrame);
+  }, [score, circumference]);
 
   return (
-    <View style={{ width: size, height: size }}>
-      <Svg width={size} height={size}>
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg
+        width={size}
+        height={size}
+        style={[StyleSheet.absoluteFill, { transform: [{ rotate: '-90deg' }] }]}
+      >
         <Defs>
           <LinearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="0%">
             <Stop offset="0%" stopColor={colors.primary} stopOpacity="1" />
@@ -68,42 +74,32 @@ function ScoreRing({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={colors.secondary}
+          stroke="rgba(255, 255, 255, 0.15)"
           strokeWidth={strokeWidth}
           fill="none"
         />
-      </Svg>
-      {/* Animated foreground using plain View since AnimatedCircle is complex */}
-      <Svg
-        width={size}
-        height={size}
-        style={[StyleSheet.absoluteFill, { transform: [{ rotate: '-90deg' }] }]}
-      >
-        <AnimatedCircle
+        {/* Animated SVG Circle without Animated.createAnimatedComponent to avoid DOM collapsable warning */}
+        <Circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={colors.primary}
+          stroke="url(#ringGrad)"
           strokeWidth={strokeWidth}
-          strokeDasharray={circumference}
-          strokeDashoffset={strokeDashoffset as unknown as number}
+          strokeDasharray={`${circumference} ${circumference}`}
+          strokeDashoffset={animatedOffset}
           strokeLinecap="round"
           fill="none"
         />
       </Svg>
       <View style={[StyleSheet.absoluteFill, styles.ringCenter]}>
-        <Text style={[styles.ringScore, { color: colors.foreground }]}>
+        <Text style={[styles.ringScore, { color: '#FFFFFF' }]}>
           {displayScore}
         </Text>
-        <Text style={[styles.ringLabel, { color: colors.mutedForeground }]}>/ 100</Text>
+        <Text style={[styles.ringLabel, { color: 'rgba(255, 255, 255, 0.72)' }]}>/ 100</Text>
       </View>
     </View>
   );
 }
-
-// Animated.createAnimatedComponent doesn't work on Svg Circle out of the box
-// so we use a plain Circle and animate via JS
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 // ── Score bar component ───────────────────────────────────────────────────────
 
@@ -135,13 +131,13 @@ function ScoreBar({
 
   return (
     <View style={styles.barRow}>
-      <Text style={[styles.barLabel, { color: colors.mutedForeground }]}>{label}</Text>
-      <View style={[styles.barTrack, { backgroundColor: colors.secondary }]}>
+      <Text style={[styles.barLabel, { color: 'rgba(255, 255, 255, 0.85)' }]}>{label}</Text>
+      <View style={[styles.barTrack, { backgroundColor: 'rgba(255, 255, 255, 0.15)' }]}>
         <Animated.View
           style={[styles.barFill, { width, backgroundColor: colors.primary }]}
         />
       </View>
-      <Text style={[styles.barValue, { color: colors.foreground }]}>{value}%</Text>
+      <Text style={[styles.barValue, { color: '#FFFFFF' }]}>{value}%</Text>
     </View>
   );
 }
@@ -254,13 +250,13 @@ export default function AIInsightsScreen() {
 
       {/* Loading state */}
       {analysis.isPending ? (
-        <View style={[styles.loadingCard, { backgroundColor: colors.foreground }]}>
-          <View style={[styles.loadingOrb, { backgroundColor: '#3A4B43' }]} />
+        <View style={[styles.loadingCard, { backgroundColor: colors.hero || '#162521' }]}>
+          <View style={[styles.loadingOrb, { backgroundColor: 'rgba(255, 255, 255, 0.05)' }]} />
           <ActivityIndicator size="large" color="#F0A895" style={{ marginTop: 8 }} />
-          <Text style={[styles.loadingTitle, { color: colors.background }]}>
+          <Text style={[styles.loadingTitle, { color: '#FFFFFF' }]}>
             Analyzing your profile
           </Text>
-          <Text style={[styles.loadingBody, { color: colors.background }]}>
+          <Text style={[styles.loadingBody, { color: 'rgba(255, 255, 255, 0.75)' }]}>
             TalentIQ is measuring your skill overlap, experience depth, and role fit against{' '}
             {job.title} at {job.company}.
           </Text>
@@ -268,8 +264,8 @@ export default function AIInsightsScreen() {
             {['Comparing skills', 'Assessing experience', 'Generating insights'].map(
               (step, i) => (
                 <View key={step} style={styles.loadingStep}>
-                  <ActivityIndicator size="small" color="rgba(240,168,149,0.6)" />
-                  <Text style={styles.loadingStepText}>{step}</Text>
+                  <ActivityIndicator size="small" color="#F0A895" />
+                  <Text style={[styles.loadingStepText, { color: 'rgba(255, 255, 255, 0.85)' }]}>{step}</Text>
                 </View>
               ),
             )}
@@ -279,15 +275,15 @@ export default function AIInsightsScreen() {
 
       {/* Error / not-signed-in prompt */}
       {!analysis.isPending && !analysis.data && !analysis.error ? (
-        <View style={[styles.promptCard, { backgroundColor: colors.foreground }]}>
-          <View style={[styles.promptIcon, { backgroundColor: '#3A4B43' }]}>
+        <View style={[styles.promptCard, { backgroundColor: colors.hero || '#162521' }]}>
+          <View style={[styles.promptIcon, { backgroundColor: 'rgba(255, 255, 255, 0.1)' }]}>
             <Feather name="zap" size={22} color="#F0A895" />
           </View>
-          <Text style={[styles.promptEyebrow, { color: '#F0A895' }]}>TALENIQ AI</Text>
-          <Text style={[styles.promptTitle, { color: colors.background }]}>
+          <Text style={[styles.promptEyebrow, { color: '#F0A895' }]}>TALENTIQ AI</Text>
+          <Text style={[styles.promptTitle, { color: '#FFFFFF' }]}>
             Get your full match report.
           </Text>
-          <Text style={[styles.promptBody, { color: colors.background }]}>
+          <Text style={[styles.promptBody, { color: 'rgba(255, 255, 255, 0.75)' }]}>
             Understand exactly how your profile aligns with this role — and what to focus on
             next.
           </Text>
@@ -313,8 +309,8 @@ export default function AIInsightsScreen() {
       {analysis.data ? (
         <Animated.View style={{ opacity: fadeIn, gap: 18 }}>
           {/* Overall score ring */}
-          <View style={[styles.scoreCard, { backgroundColor: colors.foreground }]}>
-            <View style={[styles.scoreOrnament, { backgroundColor: '#3A4B43' }]} />
+          <View style={[styles.scoreCard, { backgroundColor: colors.hero || '#162521' }]}>
+            <View style={[styles.scoreOrnament, { backgroundColor: 'rgba(255, 255, 255, 0.05)' }]} />
             <Text style={[styles.scoreEyebrow, { color: '#F0A895' }]}>OVERALL MATCH</Text>
             <View style={styles.scoreRingRow}>
               <ScoreRing score={analysis.data.matchScore} size={130} strokeWidth={11} />
@@ -334,7 +330,7 @@ export default function AIInsightsScreen() {
               </View>
               <Text style={[styles.recTitle, { color: colors.foreground }]}>AI Recommendation</Text>
             </View>
-            <Text style={[styles.recText, { color: colors.mutedForeground }]}>
+            <Text style={[styles.recText, { color: colors.foreground, opacity: 0.88 }]}>
               {analysis.data.recommendation}
             </Text>
           </View>
@@ -369,10 +365,10 @@ export default function AIInsightsScreen() {
                 {analysis.data.missingSkills.map((skill) => (
                   <View
                     key={skill}
-                    style={[styles.gapChip, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                    style={[styles.gapChip, { backgroundColor: colors.card, borderColor: colors.border }]}
                   >
-                    <Feather name="plus" size={10} color={colors.mutedForeground} />
-                    <Text style={[styles.gapChipText, { color: colors.mutedForeground }]}>
+                    <Feather name="plus" size={11} color={colors.primary} />
+                    <Text style={[styles.gapChipText, { color: colors.foreground }]}>
                       {skill}
                     </Text>
                   </View>

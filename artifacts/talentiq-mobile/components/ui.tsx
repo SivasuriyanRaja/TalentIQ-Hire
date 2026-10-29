@@ -132,18 +132,24 @@ export function PrimaryButton({
   testID?: string;
 }) {
   const colors = useColors();
-  const backgroundColor =
-    tone === 'dark'
-      ? colors.foreground
-      : tone === 'light'
-        ? colors.secondary
-        : colors.primary;
-  const textColor =
-    tone === 'dark'
-      ? colors.background
-      : tone === 'light'
-        ? colors.secondaryForeground
-        : colors.primaryForeground;
+  const isDarkTone = tone === 'dark';
+  const isLightTone = tone === 'light';
+
+  const backgroundColor = isDarkTone
+    ? (colors.hero || '#182321')
+    : isLightTone
+      ? colors.secondary
+      : colors.primary;
+
+  const textColor = isDarkTone
+    ? '#FFFFFF'
+    : isLightTone
+      ? colors.secondaryForeground
+      : colors.primaryForeground;
+
+  const borderColor = isDarkTone ? 'rgba(255, 255, 255, 0.16)' : 'transparent';
+  const borderWidth = isDarkTone ? 1 : 0;
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -155,7 +161,12 @@ export function PrimaryButton({
       }}
       style={({ pressed }) => [
         styles.primaryButton,
-        { backgroundColor, opacity: disabled ? 0.52 : pressed ? 0.84 : 1 },
+        {
+          backgroundColor,
+          borderColor,
+          borderWidth,
+          opacity: disabled ? 0.52 : pressed ? 0.84 : 1,
+        },
       ]}
     >
       {loading ? (

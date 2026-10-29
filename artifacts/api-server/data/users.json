@@ -16,5 +16,65 @@
     "hash": "5a14196bda703b0b6c184938b7570b7f1503e1897c357fcc209a84b3077a6ca8dda310713337b3c9cf123d847ce700ca10fde60ac2a37dc2724c30e5cff958cd",
     "role": "candidate",
     "createdAt": "2026-10-28T06:42:59.559Z"
+  },
+  "user_g_dbe998674f631820": {
+    "userId": "user_g_dbe998674f631820",
+    "name": "Alex Morgan",
+    "email": "alex.dev@gmail.com",
+    "salt": "b97ba1648af9c06283287b6081f9e25c",
+    "hash": "2902964ff7cab3450e88f60781de7daebe9af002f878201bfaaa86d8cc7812699a234500420deb3077fa22166e2999a067345848c4a1d4e5397934043da2e9dd",
+    "role": "candidate",
+    "avatarUrl": "https://lh3.googleusercontent.com/a/default-user",
+    "googleId": "google_1029384756",
+    "authProvider": "google",
+    "createdAt": "2026-10-29T09:52:05.775Z"
+  },
+  "user_g_f8803443049651ce": {
+    "userId": "user_g_f8803443049651ce",
+    "name": "Sarah Lin",
+    "email": "sarah.talent@gmail.com",
+    "salt": "5f4c3d08e0b7b352260c9ea1ac75a507",
+    "hash": "1079a878d39680414b0cccfe8e7f298dcc3c22fdf22ccf6d0f242875cf9821a35486287e068fee742bf53497e422d1591ca230dd2721bd8054c5886ece40c7ae",
+    "role": "recruiter",
+    "avatarUrl": "",
+    "googleId": "google_9988776655",
+    "authProvider": "google",
+    "createdAt": "2026-10-29T09:52:25.833Z"
+  },
+  "user_g_3715a473969d4866": {
+    "userId": "user_g_3715a473969d4866",
+    "name": "Alex Morgan",
+    "email": "alex.morgan@gmail.com",
+    "salt": "7e9afcf3c79e02b5df22c673bf517e1f",
+    "hash": "ab95299fe7b87d4c04f879b833553cadc0c18bff3ea22f9878705cd9ffeb353be5d870d1cc2d43483cd6194acc814b937e4642c11224327a0dc1d763219eab79",
+    "role": "candidate",
+    "avatarUrl": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120",
+    "googleId": "google_candidate_demo",
+    "authProvider": "google",
+    "createdAt": "2026-10-29T10:59:22.855Z"
+  },
+  "user_g_d322b18c020a16ab": {
+    "userId": "user_g_d322b18c020a16ab",
+    "name": "Sarah Lin",
+    "email": "sarah.recruiter@gmail.com",
+    "salt": "93aab4dce9aeb2d60333680c9f5108ce",
+    "hash": "09d1d581b3c0a3c2604a1ad3fccc3492fc10625c7e9b6c2c1cb9ea56aac608918aa72db5e63d28f70f8d67be9f24d1756f822231ca3894bcfd1ef810e304de9c",
+    "role": "recruiter",
+    "avatarUrl": "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=120",
+    "googleId": "google_recruiter_demo",
+    "authProvider": "google",
+    "createdAt": "2026-10-29T11:01:34.984Z"
+  },
+  "user_g_14be4a9d405b1929": {
+    "userId": "user_g_14be4a9d405b1929",
+    "name": "Sivasuriyan Raja",
+    "email": "sivasuriyanraja569@gmail.com",
+    "salt": "d2032b0e3bd3d4d5c63cccd9cdd40fdd",
+    "hash": "1a055f177d27f763f5c31131d3d8f74a572a1052d0f2f55399a336ff7dd82ab3a16ee9f2bc23e2cf6462d1bced90f95a3de3ea158ec3abaa246ec6b24aeb1037",
+    "role": "candidate",
+    "avatarUrl": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120",
+    "googleId": "google_user_primary",
+    "authProvider": "google",
+    "createdAt": "2026-10-29T11:29:23.799Z"
   }
 }

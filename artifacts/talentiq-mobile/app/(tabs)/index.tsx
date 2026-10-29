@@ -74,15 +74,15 @@ export default function HomeScreen() {
         </Pressable>
       </View>
 
-      <View style={[styles.hero, { backgroundColor: colors.foreground }]}>
+      <View style={[styles.hero, { backgroundColor: colors.hero || '#182321' }]}>
         <View style={styles.heroOrnament} />
         <View style={styles.heroTop}>
           <View style={styles.heroPill}>
             <Feather name="zap" size={12} color="#F0A895" />
             <Text style={styles.heroPillText}>YOUR TALENT, IN FOCUS</Text>
           </View>
-          <Text style={[styles.heroTitle, { color: colors.background }]}>A closer match starts here.</Text>
-          <Text style={[styles.heroBody, { color: colors.background }]}>
+          <Text style={[styles.heroTitle, { color: '#FFFFFF' }]}>A closer match starts here.</Text>
+          <Text style={[styles.heroBody, { color: 'rgba(255, 255, 255, 0.8)' }]}>
             See where your strengths stand out and what to bring to your next role.
           </Text>
         </View>
@@ -170,10 +170,10 @@ function RecruiterHome({
           <Avatar initials="HR" size={42} />
         </Pressable>
       </View>
-      <View style={[styles.recruiterHero, { backgroundColor: colors.foreground }]}>
-        <Eyebrow color={colors.background}>YOUR TALENT PIPELINE</Eyebrow>
-        <Text style={[styles.recruiterTitle, { color: colors.background }]}>Make the next great hire.</Text>
-        <Text style={[styles.heroBody, { color: colors.background }]}>
+      <View style={[styles.recruiterHero, { backgroundColor: colors.hero || '#182321' }]}>
+        <Eyebrow color="#F0A895">YOUR TALENT PIPELINE</Eyebrow>
+        <Text style={[styles.recruiterTitle, { color: '#FFFFFF' }]}>Make the next great hire.</Text>
+        <Text style={[styles.heroBody, { color: 'rgba(255, 255, 255, 0.8)' }]}>
           Find stronger signals, keep candidates moving, and spend more time in meaningful conversations.
         </Text>
         <PrimaryButton label="View full dashboard" icon="bar-chart-2" onPress={onDashboard} />

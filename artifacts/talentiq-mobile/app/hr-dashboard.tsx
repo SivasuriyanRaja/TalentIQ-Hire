@@ -60,13 +60,13 @@ export default function HRDashboardScreen() {
       </View>
 
       {/* Hero banner */}
-      <View style={[styles.hero, { backgroundColor: colors.foreground }]}>
+      <View style={[styles.hero, { backgroundColor: colors.hero || '#182321' }]}>
         <View style={styles.heroOrb} />
-        <Eyebrow color={isDark ? colors.background : '#8EE3C3'}>TALENT PIPELINE OVERVIEW</Eyebrow>
-        <Text style={[styles.heroTitle, { color: colors.background }]}>
+        <Eyebrow color="#8EE3C3">TALENT PIPELINE OVERVIEW</Eyebrow>
+        <Text style={[styles.heroTitle, { color: '#FFFFFF' }]}>
           Your hiring{'\n'}at a glance.
         </Text>
-        <Text style={[styles.heroBody, { color: colors.background }]}>
+        <Text style={[styles.heroBody, { color: 'rgba(255, 255, 255, 0.8)' }]}>
           Track every open role, shortlisted candidate, and upcoming interview — all in one view.
         </Text>
         <PrimaryButton

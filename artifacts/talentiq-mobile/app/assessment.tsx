@@ -433,31 +433,31 @@ export default function AssessmentScreen() {
           <Text style={[styles.backText, { color: colors.foreground }]}>Back to role</Text>
         </Pressable>
 
-        <View style={[styles.startCard, { backgroundColor: colors.foreground }]}>
+        <View style={[styles.startCard, { backgroundColor: colors.hero || '#182321' }]}>
           <View style={styles.cardHeaderRow}>
-            <View style={[styles.sparkle, { backgroundColor: isDark ? 'rgba(17, 26, 25, 0.12)' : '#36483E' }]}>
-              <Feather name="zap" size={22} color={isDark ? colors.background : colors.primaryForeground} />
+            <View style={[styles.sparkle, { backgroundColor: 'rgba(255, 255, 255, 0.12)' }]}>
+              <Feather name="zap" size={22} color="#F0A895" />
             </View>
-            <View style={[styles.proctorPill, { backgroundColor: isDark ? 'rgba(17, 26, 25, 0.12)' : '#36483E' }]}>
-              <Feather name="shield" size={12} color={isDark ? '#C95744' : '#F0A895'} />
-              <Text style={[styles.proctorPillText, { color: isDark ? '#C95744' : '#F0A895' }]}>AI PROCTORED</Text>
+            <View style={[styles.proctorPill, { backgroundColor: 'rgba(255, 255, 255, 0.12)' }]}>
+              <Feather name="shield" size={12} color="#F0A895" />
+              <Text style={[styles.proctorPillText, { color: '#F0A895' }]}>AI PROCTORED</Text>
             </View>
           </View>
 
-          <Text style={[styles.eyebrow, { color: isDark ? '#C95744' : '#F0A895' }]}>
+          <Text style={[styles.eyebrow, { color: '#F0A895' }]}>
             {job.company.toUpperCase()} · TECHNICAL ASSESSMENT
           </Text>
-          <Text style={[styles.heroTitle, { color: colors.background }]}>
+          <Text style={[styles.heroTitle, { color: '#FFFFFF' }]}>
             Demonstrate your craft.
           </Text>
-          <Text style={[styles.heroCopy, { color: colors.background }]}>
+          <Text style={[styles.heroCopy, { color: 'rgba(255, 255, 255, 0.8)' }]}>
             An AI-tailored technical assessment evaluating practical engineering competencies for the{' '}
-            <Text style={{ fontFamily: 'Inter_700Bold' }}>{job.title}</Text> role.
+            <Text style={{ fontFamily: 'Inter_700Bold', color: '#FFFFFF' }}>{job.title}</Text> role.
           </Text>
 
           {/* Format selection */}
           <View style={styles.setupBlock}>
-            <Text style={[styles.setupLabel, { color: colors.background }]}>Assessment Format</Text>
+            <Text style={[styles.setupLabel, { color: 'rgba(255, 255, 255, 0.85)' }]}>Assessment Format</Text>
             <View style={styles.chipRow}>
               <Chip
                 label="Role Technical Skills"
@@ -474,7 +474,7 @@ export default function AssessmentScreen() {
 
           {/* Question count selection */}
           <View style={styles.setupBlock}>
-            <Text style={[styles.setupLabel, { color: colors.background }]}>Question Count</Text>
+            <Text style={[styles.setupLabel, { color: 'rgba(255, 255, 255, 0.85)' }]}>Question Count</Text>
             <View style={styles.chipRow}>
               {[3, 5, 8].map((count) => (
                 <Chip
@@ -489,7 +489,7 @@ export default function AssessmentScreen() {
 
           {/* Role skills preview */}
           <View style={styles.setupBlock}>
-            <Text style={[styles.setupLabel, { color: colors.background }]}>Skills Evaluated</Text>
+            <Text style={[styles.setupLabel, { color: 'rgba(255, 255, 255, 0.85)' }]}>Skills Evaluated</Text>
             <View style={styles.skillWrap}>
               {job.skills.map((skill) => (
                 <View
@@ -497,12 +497,12 @@ export default function AssessmentScreen() {
                   style={[
                     styles.skillBadge,
                     {
-                      backgroundColor: isDark ? 'rgba(17, 26, 25, 0.08)' : 'rgba(255, 255, 255, 0.15)',
-                      borderColor: isDark ? 'rgba(17, 26, 25, 0.2)' : 'rgba(255, 255, 255, 0.25)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                      borderColor: 'rgba(255, 255, 255, 0.22)',
                     },
                   ]}
                 >
-                  <Text style={[styles.skillBadgeText, { color: colors.background }]}>{skill}</Text>
+                  <Text style={[styles.skillBadgeText, { color: '#FFFFFF' }]}>{skill}</Text>
                 </View>
               ))}
             </View>
@@ -513,30 +513,30 @@ export default function AssessmentScreen() {
             style={[
               styles.pledgeCard,
               {
-                backgroundColor: isDark ? 'rgba(17, 26, 25, 0.05)' : 'rgba(255, 255, 255, 0.08)',
-                borderColor: isDark ? 'rgba(17, 26, 25, 0.16)' : 'rgba(255, 255, 255, 0.18)',
+                backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                borderColor: 'rgba(255, 255, 255, 0.18)',
               },
             ]}
           >
             <View style={styles.pledgeHeaderRow}>
-              <View style={[styles.pledgeIconWrap, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.18)' : 'rgba(16, 185, 129, 0.25)' }]}>
-                <Feather name="shield" size={14} color="#059669" />
+              <View style={[styles.pledgeIconWrap, { backgroundColor: 'rgba(16, 185, 129, 0.25)' }]}>
+                <Feather name="shield" size={14} color="#34D399" />
               </View>
-              <Text style={[styles.pledgeHeaderTitle, { color: colors.background }]}>
+              <Text style={[styles.pledgeHeaderTitle, { color: '#FFFFFF' }]}>
                 Anti-Proxy Integrity Attestation
               </Text>
               <Pressable onPress={() => setShowPledgeModal(true)} hitSlop={8}>
-                <Feather name="info" size={16} color={isDark ? '#C95744' : '#F0A895'} />
+                <Feather name="info" size={16} color="#F0A895" />
               </Pressable>
             </View>
 
             <View style={styles.pledgeCandidateRow}>
               <Avatar initials={candidateInitials} size={32} />
               <View style={{ flex: 1, gap: 1 }}>
-                <Text style={[styles.pledgeCandidateName, { color: colors.background }]}>
+                <Text style={[styles.pledgeCandidateName, { color: '#FFFFFF' }]}>
                   {candidateName}
                 </Text>
-                <Text style={[styles.pledgeCandidateMeta, { color: isDark ? '#4B5563' : '#D1D5DB' }]}>
+                <Text style={[styles.pledgeCandidateMeta, { color: 'rgba(255, 255, 255, 0.7)' }]}>
                   Single Device Verified · Zero Proxy Policy
                 </Text>
               </View>
@@ -550,18 +550,14 @@ export default function AssessmentScreen() {
                 style={[
                   styles.checkboxBox,
                   {
-                    borderColor: identityPledgeSigned ? '#10B981' : isDark ? '#111A19' : '#F0A895',
-                    backgroundColor: identityPledgeSigned
-                      ? '#10B981'
-                      : isDark
-                        ? '#FFFFFF'
-                        : 'transparent',
+                    borderColor: identityPledgeSigned ? '#10B981' : '#F0A895',
+                    backgroundColor: identityPledgeSigned ? '#10B981' : 'transparent',
                   },
                 ]}
               >
                 {identityPledgeSigned && <Feather name="check" size={13} color="#FFFFFF" />}
               </View>
-              <Text style={[styles.checkboxLabel, { color: colors.background }]}>
+              <Text style={[styles.checkboxLabel, { color: 'rgba(255, 255, 255, 0.9)' }]}>
                 I certify that I am the registered candidate and will complete this assessment independently with NO proxy assistance, external AI tools, or secondary devices.
               </Text>
             </Pressable>
@@ -648,10 +644,10 @@ export default function AssessmentScreen() {
                 {
                   backgroundColor:
                     evaluation.proxyRiskLevel === 'HIGH'
-                      ? '#FFEBE6'
+                      ? (isDark ? 'rgba(216, 93, 73, 0.22)' : '#FFEBE6')
                       : evaluation.proxyRiskLevel === 'MEDIUM'
-                        ? '#FEF3C7'
-                        : '#D1FAE5',
+                        ? (isDark ? 'rgba(245, 158, 11, 0.22)' : '#FEF3C7')
+                        : (isDark ? 'rgba(16, 185, 129, 0.22)' : '#D1FAE5'),
                 },
               ]}
             >
@@ -661,10 +657,10 @@ export default function AssessmentScreen() {
                   {
                     color:
                       evaluation.proxyRiskLevel === 'HIGH'
-                        ? '#D85D49'
+                        ? (isDark ? '#F87171' : '#D85D49')
                         : evaluation.proxyRiskLevel === 'MEDIUM'
-                          ? '#B45309'
-                          : '#065F46',
+                          ? (isDark ? '#FBBF24' : '#B45309')
+                          : (isDark ? '#34D399' : '#065F46'),
                   },
                 ]}
               >
