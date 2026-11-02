@@ -9,6 +9,8 @@ import Constants from 'expo-constants';
  * 4. On Android Emulator: http://10.0.2.2:5000
  * 5. Fallback: http://localhost:5000
  */
+const RENDER_BACKEND_URL = 'https://talentiq-hire.onrender.com';
+
 export function getApiBaseUrl(): string {
   const publicDomain = process.env.EXPO_PUBLIC_DOMAIN;
 
@@ -47,6 +49,10 @@ export function getApiBaseUrl(): string {
   // 4. Android Emulator loopback
   if (Platform.OS === 'android') {
     return 'http://10.0.2.2:5000';
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    return RENDER_BACKEND_URL;
   }
 
   return 'http://localhost:5000';
