@@ -19,7 +19,7 @@
       }
     },
     {
-      "source": "/auth/(.*)",
+      "source": "/auth/google/callback",
       "destination": {
         "service": "api-server"
       }

@@ -116,4 +116,11 @@ app.get("/auth/google/callback", (req, res) => {
   res.redirect(`/api/auth/google/callback${query}`);
 });
 
+// If /auth/callback hits Express, safely redirect to frontend SPA
+app.get("/auth/callback", (req, res) => {
+  const query = req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : "";
+  const frontendUrl = process.env.FRONTEND_URL || "https://talentiq-hire.vercel.app";
+  res.redirect(`${frontendUrl.replace(/\/+$/, "")}/auth/callback${query}`);
+});
+
 export default app;
