@@ -253,12 +253,6 @@ export function TalentIQProvider({
     };
   }, [isSignedIn]);
 
-  // Sync Clerk sign-in status
-  useEffect(() => {
-    if (isSignedIn && authMode === 'unauthenticated') {
-      setAuthMode('authenticated');
-    }
-  }, [isSignedIn, authMode]);
 
   // ── Local persistence ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -713,11 +707,11 @@ export function TalentIQProvider({
   );
 
   const logout = useCallback(async () => {
-    setIsSyncing(false);
-    hasSyncedRef.current = false;
-    setAuthUser(null);
-    setAuthMode('unauthenticated');
-    setState(defaultState);
+    try {
+      if (isSignedIn) {
+        await clerkSignOut();
+      }
+    } catch {}
 
     try {
       await AsyncStorage.multiRemove([
@@ -727,11 +721,11 @@ export function TalentIQProvider({
       ]);
     } catch {}
 
-    try {
-      if (isSignedIn) {
-        await clerkSignOut();
-      }
-    } catch {}
+    setIsSyncing(false);
+    hasSyncedRef.current = false;
+    setAuthUser(null);
+    setAuthMode('unauthenticated');
+    setState(defaultState);
 
     router.replace('/');
   }, [isSignedIn, clerkSignOut, router]);

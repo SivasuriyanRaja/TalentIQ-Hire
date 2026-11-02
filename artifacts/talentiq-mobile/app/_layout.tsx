@@ -77,6 +77,7 @@ function RootLayoutNav() {
       rootSegment === 'create-job' ||
       rootSegment === 'assessment' ||
       rootSegment === 'ai-insights';
+    const isWelcome = !rootSegment || rootSegment === 'index';
 
     const canAccess = isUserSignedIn || authMode === 'authenticated' || authMode === 'guest';
 
@@ -85,8 +86,8 @@ function RootLayoutNav() {
       router.replace('/');
     }
 
-    // If authenticated and on (auth) modals, send to dashboard
-    if (canAccess && inAuthGroup) {
+    // If authenticated and on (auth) modals or welcome screen, send to dashboard
+    if (canAccess && (inAuthGroup || isWelcome)) {
       router.replace('/(tabs)');
     }
   }, [isUserSignedIn, authMode, contextLoaded, segments, router]);

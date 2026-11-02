@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { Feather } from '@expo/vector-icons';
-import { Redirect, useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { BackHandler, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useColors } from '@/hooks/useColors';
 import { Screen, Wordmark } from '@/components/ui';
@@ -30,9 +30,6 @@ export default function WelcomeScreen() {
     }, []),
   );
 
-  if (isLoaded && isUserSignedIn && authMode === 'authenticated') {
-    return <Redirect href="/(tabs)" />;
-  }
 
   return (
     <Screen contentStyle={styles.page}>

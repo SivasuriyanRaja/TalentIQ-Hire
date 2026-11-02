@@ -1,6 +1,6 @@
 import React from 'react';
 import { Feather } from '@expo/vector-icons';
-import { Redirect, Tabs } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { Platform, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -44,15 +44,10 @@ function TabBarIcon({ icon, focused, badge }: TabItemProps) {
 export default function TabLayout() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { isUserSignedIn, authMode, isLoaded, applications } = useTalentIQ();
+  const { applications } = useTalentIQ();
   const isDark = useColorScheme() === 'dark';
   const isIOS = Platform.OS === 'ios';
   const isWeb = Platform.OS === 'web';
-
-  // Secondary protection layer: If logged out, cannot stay in tabs
-  if (isLoaded && !isUserSignedIn && authMode === 'unauthenticated') {
-    return <Redirect href="/" />;
-  }
 
   const bottomInset = isWeb ? 8 : Math.max(insets.bottom, isIOS ? 18 : 8);
   const barHeight = 56 + bottomInset;
@@ -163,4 +158,3 @@ const styles = StyleSheet.create({
     lineHeight: 11,
   },
 });
-
