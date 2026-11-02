@@ -3,7 +3,7 @@
   "services": {
     "web": {
       "root": "artifacts/talentiq-mobile",
-      "buildCommand": "pnpm exec expo export --platform web",
+      "buildCommand": "node scripts/build-web.js",
       "outputDirectory": "dist"
     },
     "api-server": {

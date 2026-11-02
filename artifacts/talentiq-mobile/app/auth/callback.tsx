@@ -44,9 +44,15 @@ export default function GoogleAuthCallbackScreen() {
         }
 
         // 2. Case A: Backend redirected with issued session token
-        if (params.token && typeof params.token === 'string') {
+        const rawToken =
+          params.token ||
+          (Platform.OS === 'web' && typeof window !== 'undefined'
+            ? new URLSearchParams(window.location.search).get('token')
+            : null);
+
+        if (rawToken && typeof rawToken === 'string') {
           if (isMounted) setStatusText('Finalizing your TalentIQ session...');
-          const token = params.token.trim();
+          const token = rawToken.trim();
 
           const result = await loginWithSessionToken(token);
           if (!result.success) {
