@@ -8,12 +8,13 @@ import { Card, Chip, IconButton, PrimaryButton, Screen } from '@/components/ui';
 import { useColors } from '@/hooks/useColors';
 import { estimateMatch } from '@/data/talentiq';
 import { useTalentIQ } from '@/state/TalentIQContext';
+import { formatSalaryForRegion, getCountryBadge } from '@/utils/regionUtils';
 
 export default function JobDetailScreen() {
   const colors = useColors();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { jobs, role, profile, applications, savedJobIds, toggleSavedJob, applyToJob, isUserSignedIn } = useTalentIQ();
+  const { jobs, role, profile, applications, savedJobIds, toggleSavedJob, applyToJob, isUserSignedIn, worldRegion } = useTalentIQ();
   const analysis = useAnalyzeTalentMatch();
   const [notice, setNotice] = React.useState('');
   const job = jobs.find((item) => item.id === id);
@@ -41,6 +42,8 @@ export default function JobDetailScreen() {
   const isApplied = applications.some((item) => item.jobId === job.id);
   const isSaved = savedJobIds.includes(job.id);
   const previewScore = estimateMatch(job, profile.skills);
+  const displaySalary = formatSalaryForRegion(job, worldRegion || 'India');
+  const countryBadge = getCountryBadge(job);
 
   const runAnalysis = async () => {
     if (!isUserSignedIn) {
@@ -101,19 +104,37 @@ export default function JobDetailScreen() {
         <View style={[styles.logo, { backgroundColor: colors.accent }]}>
           <Text style={[styles.logoText, { color: colors.accentForeground }]}>{job.company.slice(0, 1)}</Text>
         </View>
-        <Text style={[styles.company, { color: colors.mutedForeground }]}>{job.company}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+          <Text style={[styles.company, { color: colors.mutedForeground }]}>{job.company}</Text>
+          <Text style={{ fontSize: 14 }}>{countryBadge.flag}</Text>
+        </View>
         <Text style={[styles.title, { color: colors.foreground }]}>{job.title}</Text>
         <View style={styles.details}>
-          <Detail icon="map-pin" label={job.location} />
+          <Detail icon="map-pin" label={`${countryBadge.flag} ${job.location}`} />
           <Detail icon="briefcase" label={job.workMode} />
           <Detail icon="clock" label={job.employment} />
         </View>
       </View>
 
       <Card style={styles.salaryCard}>
-        <View>
-          <Text style={[styles.salaryLabel, { color: colors.mutedForeground }]}>COMPENSATION</Text>
-          <Text style={[styles.salary, { color: colors.foreground }]}>{job.salary}</Text>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={[styles.salaryLabel, { color: colors.mutedForeground }]}>
+              COMPENSATION ({(worldRegion || 'India').toUpperCase()})
+            </Text>
+            <Text style={{ fontSize: 13 }}>{countryBadge.flag}</Text>
+          </View>
+          <Text style={[styles.salary, { color: colors.primary }]}>{displaySalary}</Text>
+          {job.salaryINR && (worldRegion || 'India') !== 'India' ? (
+            <Text style={{ fontSize: 11, fontFamily: 'Inter_400Regular', color: colors.mutedForeground, marginTop: 2 }}>
+              India Equivalent: {job.salaryINR}
+            </Text>
+          ) : null}
+          {job.salaryUSD && (worldRegion || 'India') === 'India' ? (
+            <Text style={{ fontSize: 11, fontFamily: 'Inter_400Regular', color: colors.mutedForeground, marginTop: 2 }}>
+              US Dollar Equivalent: {job.salaryUSD}
+            </Text>
+          ) : null}
         </View>
         <View style={[styles.salaryIcon, { backgroundColor: colors.secondary }]}>
           <Feather name="trending-up" size={17} color={colors.secondaryForeground} />

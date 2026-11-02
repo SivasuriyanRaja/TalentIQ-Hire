@@ -16,6 +16,7 @@ import { JobCard } from '@/components/JobCard';
 import { estimateMatch } from '@/data/talentiq';
 import { useColors } from '@/hooks/useColors';
 import { useTalentIQ } from '@/state/TalentIQContext';
+import { filterAndPrioritizeJobs, REGION_OPTIONS } from '@/utils/regionUtils';
 
 export default function HomeScreen() {
   const colors = useColors();
@@ -30,6 +31,7 @@ export default function HomeScreen() {
     toggleSavedJob,
     isLoaded,
     authUser,
+    worldRegion,
   } = useTalentIQ();
 
   // On the root home tab, pressing Android hardware back exits only on double-press
@@ -54,6 +56,16 @@ export default function HomeScreen() {
 
   const displayName = authUser?.name?.split(' ')[0] || user?.firstName || profile.name.split(' ')[0];
 
+  const prioritizedJobs = React.useMemo(() => {
+    return filterAndPrioritizeJobs({
+      jobs,
+      region: worldRegion || 'India',
+    });
+  }, [jobs, worldRegion]);
+
+  const featured = prioritizedJobs[0];
+  const recommended = prioritizedJobs.slice(1, 4);
+
   if (role === 'recruiter') {
     return (
       <RecruiterHome
@@ -65,15 +77,22 @@ export default function HomeScreen() {
     );
   }
 
-  const featured = jobs[0];
-  const recommended = jobs.slice(1, 4);
-
   return (
     <Screen>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Wordmark />
-          <Text style={[styles.greeting, { color: colors.mutedForeground }]}>Good morning, {displayName}</Text>
+          <View style={styles.greetingRow}>
+            <Text style={[styles.greeting, { color: colors.mutedForeground }]}>Good morning, {displayName}</Text>
+            <Pressable
+              onPress={() => router.push('/(tabs)/jobs')}
+              style={[styles.regionChip, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+            >
+              <Text style={styles.regionChipText}>
+                {worldRegion === 'US' ? '🇺🇸 US ($)' : worldRegion === 'Europe' ? '🇪🇺 EU (€)' : worldRegion === 'Global' ? '🌐 Global' : '🇮🇳 India (₹)'}
+              </Text>
+            </Pressable>
+          </View>
         </View>
         <Pressable onPress={() => router.push('/(tabs)/profile')}>
           <Avatar initials={displayName.slice(0, 1).toUpperCase()} size={42} />
@@ -89,7 +108,9 @@ export default function HomeScreen() {
           </View>
           <Text style={[styles.heroTitle, { color: '#FFFFFF' }]}>A closer match starts here.</Text>
           <Text style={[styles.heroBody, { color: 'rgba(255, 255, 255, 0.8)' }]}>
-            See where your strengths stand out and what to bring to your next role.
+            {worldRegion === 'India'
+              ? 'Discover top Indian tech leaders and startups offering high-impact compensation in ₹ Lakhs.'
+              : 'See where your strengths stand out and what to bring to your next role.'}
           </Text>
         </View>
         <Pressable
@@ -97,7 +118,9 @@ export default function HomeScreen() {
           onPress={() => router.push('/(tabs)/jobs')}
         >
           <Feather name="search" size={17} color={colors.primary} />
-          <Text style={[styles.searchText, { color: colors.mutedForeground }]}>Role, skill, or company</Text>
+          <Text style={[styles.searchText, { color: colors.mutedForeground }]}>
+            {worldRegion === 'India' ? 'Search Bengaluru, Swiggy, React, Python...' : 'Role, skill, or company'}
+          </Text>
           <Feather name="arrow-right" size={16} color={colors.foreground} />
         </Pressable>
       </View>
@@ -110,13 +133,14 @@ export default function HomeScreen() {
 
       <View style={styles.sectionWrap}>
         <SectionTitle
-          title="A thoughtful fit"
+          title={worldRegion === 'India' ? 'Featured in India' : 'A thoughtful fit'}
           action="See all roles"
           onAction={() => router.push('/(tabs)/jobs')}
         />
         {featured ? (
           <JobCard
             job={featured}
+            targetRegion={worldRegion || 'India'}
             matchScore={estimateMatch(featured, profile.skills)}
             saved={savedJobIds.includes(featured.id)}
             onToggleSaved={() => toggleSavedJob(featured.id)}
@@ -126,11 +150,12 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.sectionWrap}>
-        <SectionTitle title="Picked for your path" />
+        <SectionTitle title={worldRegion === 'India' ? 'Recommended in India & Remote' : 'Picked for your path'} />
         {recommended.map((job) => (
           <JobCard
             key={job.id}
             job={job}
+            targetRegion={worldRegion || 'India'}
             saved={savedJobIds.includes(job.id)}
             onToggleSaved={() => toggleSavedJob(job.id)}
             onPress={() => router.push(`/job/${job.id}`)}
@@ -237,8 +262,11 @@ function RecruiterHome({
 
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  headerLeft: { gap: 4 },
+  headerLeft: { gap: 4, flex: 1 },
+  greetingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   greeting: { fontFamily: 'Inter_400Regular', fontSize: 12 },
+  regionChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, borderWidth: 1 },
+  regionChipText: { fontFamily: 'Inter_600SemiBold', fontSize: 10 },
   hero: { padding: 21, borderRadius: 28, minHeight: 244, justifyContent: 'space-between', overflow: 'hidden' },
   heroOrnament: { position: 'absolute', height: 170, width: 170, borderRadius: 90, top: -92, right: -30, borderWidth: 28, borderColor: '#3A4B43' },
   heroTop: { gap: 10 },

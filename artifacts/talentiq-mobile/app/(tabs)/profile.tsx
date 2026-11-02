@@ -13,9 +13,10 @@ import {
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { Avatar, Card, Chip, Field, PrimaryButton, Screen, Wordmark } from '@/components/ui';
-import { UserRole } from '@/data/talentiq';
+import { UserRole, WorldRegion } from '@/data/talentiq';
 import { useColors } from '@/hooks/useColors';
 import { useTalentIQ } from '@/state/TalentIQContext';
+import { REGION_OPTIONS } from '@/utils/regionUtils';
 
 // Allowed MIME types for resume upload
 const ALLOWED_MIME_TYPES = [
@@ -40,6 +41,8 @@ export default function ProfileScreen() {
   const {
     role,
     setRole,
+    worldRegion,
+    setWorldRegion,
     profile,
     updateProfile,
     savedJobIds,
@@ -411,6 +414,75 @@ export default function ProfileScreen() {
         </View>
       </View>
 
+      {/* ── Regional Market & Currency Preference ── */}
+      <View style={styles.block}>
+        <View style={styles.regionHeaderRow}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+            Target Region & Market
+          </Text>
+          <View
+            style={[
+              styles.regionActiveBadge,
+              { backgroundColor: colors.accent, borderColor: colors.border },
+            ]}
+          >
+            <Text style={[styles.regionActiveText, { color: colors.accentForeground }]}>
+              {REGION_OPTIONS.find((r) => r.id === worldRegion)?.flag}{' '}
+              {REGION_OPTIONS.find((r) => r.id === worldRegion)?.currencySymbol}{' '}
+              ({REGION_OPTIONS.find((r) => r.id === worldRegion)?.unitLabel})
+            </Text>
+          </View>
+        </View>
+        <Text style={[styles.switchHint, { color: colors.mutedForeground }]}>
+          Select your primary job market. Automatically customizes compensation display (e.g. ₹ LPA in India) and prioritizes domestic tech companies and hubs.
+        </Text>
+
+        <View style={styles.regionGrid}>
+          {REGION_OPTIONS.map((opt) => {
+            const isSelected = worldRegion === opt.id;
+            return (
+              <Pressable
+                key={opt.id}
+                onPress={() => setWorldRegion(opt.id)}
+                style={[
+                  styles.regionCard,
+                  {
+                    backgroundColor: isSelected ? colors.accent : colors.card,
+                    borderColor: isSelected ? colors.primary : colors.border,
+                  },
+                ]}
+              >
+                <View style={styles.regionCardHeader}>
+                  <Text style={styles.regionFlag}>{opt.flag}</Text>
+                  <View style={styles.regionCardMeta}>
+                    <Text
+                      style={[
+                        styles.regionCardTitle,
+                        { color: isSelected ? colors.accentForeground : colors.foreground },
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                    <Text style={[styles.regionCardCurrency, { color: colors.mutedForeground }]}>
+                      {opt.currencySymbol} · {opt.unitLabel}
+                    </Text>
+                  </View>
+                  {isSelected ? (
+                    <Feather name="check-circle" size={16} color={colors.primary} />
+                  ) : null}
+                </View>
+                <Text
+                  style={[styles.regionCardSummary, { color: colors.mutedForeground }]}
+                  numberOfLines={2}
+                >
+                  {opt.summary}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
       {/* ── Status notices ── */}
       {syncError ? (
         <View style={[styles.noticeRow, { backgroundColor: colors.muted }]}>
@@ -614,4 +686,53 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   signOutText: { fontFamily: 'Inter_600SemiBold', fontSize: 12 },
+  // Regional settings
+  regionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  regionActiveBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  regionActiveText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+  },
+  regionGrid: {
+    gap: 9,
+  },
+  regionCard: {
+    borderWidth: 1.5,
+    borderRadius: 14,
+    padding: 12,
+    gap: 6,
+  },
+  regionCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+  },
+  regionFlag: {
+    fontSize: 22,
+  },
+  regionCardMeta: {
+    flex: 1,
+  },
+  regionCardTitle: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 13,
+  },
+  regionCardCurrency: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 10,
+  },
+  regionCardSummary: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
+    lineHeight: 15,
+  },
 });

@@ -1,14 +1,16 @@
 import React from 'react';
 import { Feather } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Job } from '@/data/talentiq';
+import { Job, WorldRegion } from '@/data/talentiq';
 import { useColors } from '@/hooks/useColors';
 import { Card, IconButton } from '@/components/ui';
+import { formatSalaryForRegion, getCountryBadge } from '@/utils/regionUtils';
 
 export function JobCard({
   job,
   matchScore,
   saved,
+  targetRegion = 'India',
   onPress,
   onToggleSaved,
   compact = false,
@@ -16,11 +18,15 @@ export function JobCard({
   job: Job;
   matchScore?: number;
   saved?: boolean;
+  targetRegion?: WorldRegion;
   onPress: () => void;
   onToggleSaved?: () => void;
   compact?: boolean;
 }) {
   const colors = useColors();
+  const displaySalary = formatSalaryForRegion(job, targetRegion);
+  const countryBadge = getCountryBadge(job);
+
   return (
     <Pressable onPress={onPress}>
       {({ pressed }) => (
@@ -32,7 +38,10 @@ export function JobCard({
               </Text>
             </View>
             <View style={styles.companyBlock}>
-              <Text style={[styles.company, { color: colors.mutedForeground }]}>{job.company}</Text>
+              <View style={styles.companyRow}>
+                <Text style={[styles.company, { color: colors.foreground }]}>{job.company}</Text>
+                <Text style={styles.countryFlag}>{countryBadge.flag}</Text>
+              </View>
               <Text style={[styles.posted, { color: colors.mutedForeground }]}>{job.posted}</Text>
             </View>
             {onToggleSaved ? (
@@ -48,8 +57,15 @@ export function JobCard({
           </View>
           <Text style={[styles.title, { color: colors.foreground }]}>{job.title}</Text>
           <View style={styles.details}>
-            <Detail icon="map-pin" label={job.location} />
+            <Detail icon="map-pin" label={`${job.location}`} />
             <Detail icon="briefcase" label={job.workMode} />
+            {job.experienceLevel ? (
+              <View style={[styles.levelBadge, { backgroundColor: colors.secondary }]}>
+                <Text style={[styles.levelText, { color: colors.secondaryForeground }]}>
+                  {job.experienceLevel}
+                </Text>
+              </View>
+            ) : null}
           </View>
           {!compact ? (
             <View style={styles.skills}>
@@ -66,7 +82,9 @@ export function JobCard({
             </View>
           ) : null}
           <View style={[styles.bottom, { borderTopColor: colors.border }]}>
-            <Text style={[styles.salary, { color: colors.foreground }]}>{job.salary}</Text>
+            <View style={styles.salaryContainer}>
+              <Text style={[styles.salary, { color: colors.primary }]}>{displaySalary}</Text>
+            </View>
             {matchScore ? (
               <View style={[styles.score, { backgroundColor: colors.accent }]}>
                 <Feather name="zap" size={11} color={colors.accentForeground} />
@@ -100,18 +118,23 @@ const styles = StyleSheet.create({
   companyMark: { width: 37, height: 37, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   companyInitial: { fontFamily: 'Inter_700Bold', fontSize: 15 },
   companyBlock: { flex: 1, gap: 2 },
-  company: { fontFamily: 'Inter_600SemiBold', fontSize: 12 },
+  companyRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  countryFlag: { fontSize: 13 },
+  company: { fontFamily: 'Inter_600SemiBold', fontSize: 13 },
   posted: { fontFamily: 'Inter_400Regular', fontSize: 10 },
   title: { fontFamily: 'Inter_700Bold', fontSize: 16, letterSpacing: -0.25 },
-  details: { flexDirection: 'row', gap: 13 },
+  details: { flexDirection: 'row', alignItems: 'center', gap: 11, flexWrap: 'wrap' },
   detail: { flexDirection: 'row', alignItems: 'center', gap: 5, flexShrink: 1 },
   detailText: { fontFamily: 'Inter_400Regular', fontSize: 11 },
+  levelBadge: { borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
+  levelText: { fontFamily: 'Inter_500Medium', fontSize: 9 },
   skills: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   skillChip: { borderRadius: 999, paddingHorizontal: 9, paddingVertical: 6 },
   skill: { fontFamily: 'Inter_500Medium', fontSize: 10 },
   moreSkills: { fontFamily: 'Inter_500Medium', fontSize: 10 },
   bottom: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 11, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  salary: { fontFamily: 'Inter_600SemiBold', fontSize: 12 },
+  salaryContainer: { flexDirection: 'row', alignItems: 'center' },
+  salary: { fontFamily: 'Inter_700Bold', fontSize: 13 },
   score: { flexDirection: 'row', gap: 5, alignItems: 'center', paddingHorizontal: 8, paddingVertical: 6, borderRadius: 999 },
   scoreText: { fontFamily: 'Inter_600SemiBold', fontSize: 10 },
 });

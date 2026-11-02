@@ -3,23 +3,30 @@ import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Chip, Field, PrimaryButton, Screen } from '@/components/ui';
-import { Job } from '@/data/talentiq';
+import { Job, WorldRegion } from '@/data/talentiq';
 import { useColors } from '@/hooks/useColors';
 import { useTalentIQ } from '@/state/TalentIQContext';
 
 const modes: Job['workMode'][] = ['Remote', 'Hybrid', 'On-site'];
+const regions: { id: WorldRegion; label: string; placeholder: string }[] = [
+  { id: 'India', label: '🇮🇳 India', placeholder: 'e.g. ₹28 – ₹45 LPA' },
+  { id: 'US', label: '🇺🇸 United States', placeholder: 'e.g. $140k – $190k' },
+  { id: 'Europe', label: '🇪🇺 Europe / UK', placeholder: 'e.g. £90k – £130k' },
+  { id: 'Global', label: '🌐 Worldwide', placeholder: 'e.g. Competitive / Negotiable' },
+];
 
 export default function CreateJobScreen() {
   const colors = useColors();
   const router = useRouter();
-  const { addJob } = useTalentIQ();
+  const { addJob, worldRegion } = useTalentIQ();
   const [title, setTitle] = useState('');
   const [company, setCompany] = useState('');
   const [location, setLocation] = useState('');
   const [salary, setSalary] = useState('');
+  const [selectedRegion, setSelectedRegion] = useState<WorldRegion>(worldRegion || 'India');
   const [description, setDescription] = useState('');
   const [skills, setSkills] = useState('');
-  const [workMode, setWorkMode] = useState<Job['workMode']>('Remote');
+  const [workMode, setWorkMode] = useState<Job['workMode']>('Hybrid');
   const [requireAssessment, setRequireAssessment] = useState(true);
   const [minPassingScore, setMinPassingScore] = useState<number>(75);
   const [submitting, setSubmitting] = useState(false);
@@ -38,14 +45,19 @@ export default function CreateJobScreen() {
       return;
     }
     setSubmitting(true);
+    const enteredSalary = salary.trim() || (selectedRegion === 'India' ? '₹25 – ₹40 LPA' : '$140k – $180k');
     const job: Job = {
       id: `job-${Date.now()}`,
       title: title.trim(),
       company: company.trim(),
       location: location.trim(),
+      country: selectedRegion === 'India' ? 'India' : selectedRegion === 'US' ? 'US' : selectedRegion === 'Europe' ? 'UK' : 'Global',
+      region: selectedRegion,
       workMode,
       employment: 'Full-time',
-      salary: salary.trim() || 'Compensation discussed',
+      salary: enteredSalary,
+      salaryINR: selectedRegion === 'India' ? enteredSalary : '₹30 – ₹45 LPA',
+      salaryUSD: selectedRegion === 'US' ? enteredSalary : '$130k – $165k',
       posted: 'Just now',
       description: description.trim(),
       skills: skills
@@ -75,10 +87,33 @@ export default function CreateJobScreen() {
           Add a clear, thoughtful description. Your role will appear in this device’s recruiter workspace.
         </Text>
       </View>
-      <Field label="Role title" value={title} onChangeText={setTitle} placeholder="e.g. Senior Product Designer" />
-      <Field label="Company" value={company} onChangeText={setCompany} placeholder="Company name" />
-      <Field label="Location" value={location} onChangeText={setLocation} placeholder="City or Remote" />
-      <Field label="Salary range" value={salary} onChangeText={setSalary} placeholder="e.g. $140k – $180k" />
+      <Field label="Role title" value={title} onChangeText={setTitle} placeholder="e.g. Senior Full Stack Engineer" />
+      <Field label="Company" value={company} onChangeText={setCompany} placeholder="e.g. Razorpay, CRED, Google" />
+      <View style={styles.modeBlock}>
+        <Text style={[styles.label, { color: colors.foreground }]}>Target Region & Currency</Text>
+        <View style={styles.modes}>
+          {regions.map((reg) => (
+            <Chip
+              key={reg.id}
+              label={reg.label}
+              selected={selectedRegion === reg.id}
+              onPress={() => setSelectedRegion(reg.id)}
+            />
+          ))}
+        </View>
+      </View>
+      <Field
+        label="Location"
+        value={location}
+        onChangeText={setLocation}
+        placeholder={selectedRegion === 'India' ? 'e.g. Bengaluru, Karnataka' : 'e.g. San Francisco, CA'}
+      />
+      <Field
+        label={`Salary range (${selectedRegion === 'India' ? 'INR ₹ LPA' : 'USD $'})`}
+        value={salary}
+        onChangeText={setSalary}
+        placeholder={regions.find((r) => r.id === selectedRegion)?.placeholder || 'e.g. ₹28 – ₹45 LPA'}
+      />
       <View style={styles.modeBlock}>
         <Text style={[styles.label, { color: colors.foreground }]}>Work arrangement</Text>
         <View style={styles.modes}>

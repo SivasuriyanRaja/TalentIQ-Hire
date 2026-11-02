@@ -31,6 +31,7 @@ import {
   Job,
   sampleJobs,
   UserRole,
+  WorldRegion,
 } from '@/data/talentiq';
 import { useCloudSync } from '@/hooks/useCloudSync';
 import { getApiEndpoint } from '@/utils/apiConfig';
@@ -93,6 +94,7 @@ export const recruiterDemoProfile: CandidateProfile = {
 
 interface TalentIQState {
   role: UserRole;
+  worldRegion: WorldRegion;
   profile: CandidateProfile;
   applications: Application[];
   savedJobIds: string[];
@@ -111,6 +113,7 @@ export interface TalentIQContextValue extends TalentIQState {
   authMode: AuthMode;
   isUserSignedIn: boolean;
   setRole: (role: UserRole) => void;
+  setWorldRegion: (region: WorldRegion) => void;
   updateProfile: (profile: CandidateProfile) => void;
   applyToJob: (jobId: string, jobTitle?: string, company?: string, matchScore?: number) => void;
   toggleSavedJob: (jobId: string) => void;
@@ -157,6 +160,7 @@ const STORAGE_PREFIX = 'talentiq.mobile.state.v3';
 
 const defaultState: TalentIQState = {
   role: 'candidate',
+  worldRegion: 'India',
   profile: initialProfile,
   applications: [],
   savedJobIds: [],
@@ -738,6 +742,11 @@ export function TalentIQProvider({
     setState((current) => ({ ...current, role }));
   }, []);
 
+  const setWorldRegion = useCallback((region: WorldRegion) => {
+    setState((current) => ({ ...current, worldRegion: region }));
+    void AsyncStorage.setItem('talentiq.user.worldRegion', region).catch(() => {});
+  }, []);
+
   const updateProfile = useCallback(
     (profile: CandidateProfile) => {
       setState((current) => ({ ...current, profile }));
@@ -908,6 +917,7 @@ export function TalentIQProvider({
       authMode,
       isUserSignedIn,
       setRole,
+      setWorldRegion,
       updateProfile,
       applyToJob,
       toggleSavedJob,
@@ -934,6 +944,7 @@ export function TalentIQProvider({
       authMode,
       isUserSignedIn,
       setRole,
+      setWorldRegion,
       updateProfile,
       applyToJob,
       toggleSavedJob,
