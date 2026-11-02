@@ -3,101 +3,48 @@ import { Feather } from '@expo/vector-icons';
 import { Redirect, Tabs } from 'expo-router';
 import { Platform, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { BlurView } from 'expo-blur';
-import Animated, {
-  useAnimatedStyle,
-  withSpring,
-  interpolate,
-  interpolateColor,
-  useSharedValue,
-} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useTalentIQ } from '@/state/TalentIQContext';
 
-// ── Animated tab icon ─────────────────────────────────────────────────────────
-
-function AnimatedTabIcon({
-  icon,
-  label,
-  focused,
-}: {
+interface TabItemProps {
   icon: React.ComponentProps<typeof Feather>['name'];
-  label: string;
   focused: boolean;
-}) {
+  badge?: number;
+}
+
+function TabBarIcon({ icon, focused, badge }: TabItemProps) {
   const colors = useColors();
 
-  const progress = useSharedValue(focused ? 1 : 0);
-
-  React.useEffect(() => {
-    progress.value = withSpring(focused ? 1 : 0, {
-      damping: 18,
-      stiffness: 200,
-      mass: 0.7,
-    });
-  }, [focused, progress]);
-
-  const pillStyle = useAnimatedStyle(() => {
-    const paddingH = interpolate(progress.value, [0, 1], [0, 14]);
-    return {
-      paddingHorizontal: paddingH,
-      backgroundColor: interpolateColor(
-        progress.value,
-        [0, 1],
-        ['transparent', colors.accent],
-      ),
-    };
-  });
-
-  const iconStyle = useAnimatedStyle(() => {
-    const scale = interpolate(progress.value, [0, 1], [1, 1.08]);
-    return { transform: [{ scale }] };
-  });
-
-  const labelStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(progress.value, [0, 0.6, 1], [0, 0, 1]);
-    const translateX = interpolate(progress.value, [0, 1], [-6, 0]);
-    const maxWidth = interpolate(progress.value, [0, 1], [0, 80]);
-    return { opacity, transform: [{ translateX }], maxWidth };
-  });
-
   return (
-    <Animated.View style={[styles.tabPill, pillStyle]}>
-      <Animated.View style={iconStyle}>
-        <Feather
-          name={icon}
-          size={20}
-          color={focused ? colors.accentForeground : colors.mutedForeground}
-        />
-      </Animated.View>
-      <Animated.Text
-        style={[
-          styles.tabLabel,
-          { color: colors.accentForeground },
-          labelStyle,
-        ]}
-        numberOfLines={1}
-      >
-        {label}
-      </Animated.Text>
-    </Animated.View>
+    <View
+      style={[
+        styles.iconContainer,
+        focused && {
+          backgroundColor: colors.accent,
+        },
+      ]}
+    >
+      <Feather
+        name={icon}
+        size={20}
+        color={focused ? colors.accentForeground : colors.mutedForeground}
+      />
+      {badge && badge > 0 ? (
+        <View style={[styles.badge, { backgroundColor: colors.primary }]}>
+          <Text style={[styles.badgeText, { color: colors.primaryForeground }]}>
+            {badge > 9 ? '9+' : badge}
+          </Text>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
-/** Convert hex color to rgb triplet string for use in rgba() */
-function hexToRgb(hex: string): string {
-  const clean = hex.replace('#', '');
-  const r = parseInt(clean.substring(0, 2), 16);
-  const g = parseInt(clean.substring(2, 4), 16);
-  const b = parseInt(clean.substring(4, 6), 16);
-  if (isNaN(r) || isNaN(g) || isNaN(b)) return '100, 150, 120';
-  return `${r}, ${g}, ${b}`;
-}
-
-// ── Tab layout ────────────────────────────────────────────────────────────────
-
 export default function TabLayout() {
   const colors = useColors();
-  const { isUserSignedIn, authMode, isLoaded } = useTalentIQ();
+  const insets = useSafeAreaInsets();
+  const { isUserSignedIn, authMode, isLoaded, applications } = useTalentIQ();
   const isDark = useColorScheme() === 'dark';
   const isIOS = Platform.OS === 'ios';
   const isWeb = Platform.OS === 'web';
@@ -107,38 +54,39 @@ export default function TabLayout() {
     return <Redirect href="/" />;
   }
 
-  const tabs: Array<{
-    name: string;
-    icon: React.ComponentProps<typeof Feather>['name'];
-    label: string;
-  }> = [
-    { name: 'index', icon: 'home', label: 'Home' },
-    { name: 'jobs', icon: 'compass', label: 'Discover' },
-    { name: 'applications', icon: 'layers', label: 'Activity' },
-    { name: 'profile', icon: 'user', label: 'Profile' },
-  ];
+  const bottomInset = isWeb ? 8 : Math.max(insets.bottom, isIOS ? 18 : 8);
+  const barHeight = 56 + bottomInset;
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
+        tabBarActiveTintColor: colors.accentForeground,
         tabBarInactiveTintColor: colors.mutedForeground,
-        tabBarShowLabel: false,
+        tabBarShowLabel: true,
+        tabBarLabelStyle: {
+          fontFamily: 'Inter_600SemiBold',
+          fontSize: 10.5,
+          letterSpacing: 0.1,
+          marginTop: 2,
+        },
         tabBarStyle: {
-          position: 'absolute',
-          height: 84,
-          paddingTop: 9,
-          paddingBottom: isWeb ? 16 : 20,
-          backgroundColor: isIOS ? 'transparent' : colors.background,
+          height: barHeight,
+          paddingTop: 6,
+          paddingBottom: bottomInset,
+          backgroundColor: colors.background,
           borderTopColor: colors.border,
-          borderTopWidth: isWeb ? 1 : StyleSheet.hairlineWidth,
-          elevation: 0,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          elevation: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 4,
         },
         tabBarBackground: () =>
           isIOS ? (
             <BlurView
-              intensity={78}
+              intensity={80}
               tint={isDark ? 'dark' : 'light'}
               style={StyleSheet.absoluteFill}
             />
@@ -147,35 +95,72 @@ export default function TabLayout() {
           ),
       }}
     >
-      {tabs.map((tab) => (
-        <Tabs.Screen
-          key={tab.name}
-          name={tab.name}
-          options={{
-            title: tab.label,
-            tabBarIcon: ({ focused }) => (
-              <AnimatedTabIcon icon={tab.icon} label={tab.label} focused={focused} />
-            ),
-          }}
-        />
-      ))}
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Home',
+          tabBarLabel: 'Home',
+          tabBarIcon: ({ focused }) => <TabBarIcon icon="home" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="jobs"
+        options={{
+          title: 'Discover',
+          tabBarLabel: 'Discover',
+          tabBarIcon: ({ focused }) => <TabBarIcon icon="compass" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="applications"
+        options={{
+          title: 'Activity',
+          tabBarLabel: 'Activity',
+          tabBarIcon: ({ focused }) => (
+            <TabBarIcon
+              icon="layers"
+              focused={focused}
+              badge={applications?.length > 0 ? applications.length : undefined}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarLabel: 'Profile',
+          tabBarIcon: ({ focused }) => <TabBarIcon icon="user" focused={focused} />,
+        }}
+      />
     </Tabs>
   );
 }
 
 const styles = StyleSheet.create({
-  tabPill: {
-    flexDirection: 'row',
+  iconContainer: {
+    width: 44,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
-    gap: 6,
-    height: 38,
-    borderRadius: 999,
-    overflow: 'hidden',
     justifyContent: 'center',
+    position: 'relative',
   },
-  tabLabel: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 12,
-    overflow: 'hidden',
+  badge: {
+    position: 'absolute',
+    top: -3,
+    right: -4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  badgeText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 9,
+    lineHeight: 11,
   },
 });
+

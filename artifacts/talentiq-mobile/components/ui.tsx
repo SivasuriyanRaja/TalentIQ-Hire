@@ -30,7 +30,7 @@ export function Screen({
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const topPadding = Platform.OS === 'web' ? Math.max(67, insets.top) : 0;
-  const bottomPadding = Platform.OS === 'web' ? 118 : Math.max(100, insets.bottom + 84);
+  const bottomPadding = Platform.OS === 'web' ? 48 : Math.max(28, insets.bottom + 20);
   const content = (
     <View
       style={[
