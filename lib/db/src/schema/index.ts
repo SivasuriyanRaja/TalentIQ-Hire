@@ -348,6 +348,7 @@ export interface IUser extends Document {
   avatarUrl?: string;
   googleId?: string;
   authProvider?: "local" | "google" | "clerk";
+  emailVerified?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -364,6 +365,7 @@ const UserSchema = new Schema<IUser>(
     avatarUrl: { type: String, default: "" },
     googleId: { type: String, sparse: true, index: true },
     authProvider: { type: String, enum: ["local", "google", "clerk"], default: "local" },
+    emailVerified: { type: Boolean, default: false },
   },
   { timestamps: true },
 );

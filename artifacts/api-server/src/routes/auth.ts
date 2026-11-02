@@ -285,18 +285,65 @@ router.post("/auth/sign-in", handleLogin);
 
 async function handleGoogleAuth(req: Request, res: Response) {
   try {
-    const { token: googleAuthToken, email, name, picture, googleId, role, intent } = req.body ?? {};
+    const {
+      code,
+      redirectUri,
+      redirect_uri,
+      token: googleAuthToken,
+      email,
+      name,
+      picture,
+      googleId,
+      role,
+      intent,
+    } = req.body ?? {};
 
     let userEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
     let userName = typeof name === "string" ? name.trim() : "";
     let userPicture = typeof picture === "string" ? picture.trim() : "";
     let userGoogleId = typeof googleId === "string" ? googleId.trim() : "";
 
-    // If an OAuth token is supplied, verify it with Google APIs
-    if (googleAuthToken && typeof googleAuthToken === "string") {
+    let effectiveToken = typeof googleAuthToken === "string" ? googleAuthToken : "";
+
+    // 1. If an authorization code was received, exchange it for tokens at oauth2.googleapis.com/token
+    if (code && typeof code === "string") {
+      const clientId =
+        process.env.GOOGLE_CLIENT_ID ||
+        process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ||
+        "";
+      const clientSecret = process.env.GOOGLE_CLIENT_SECRET || "";
+      const targetRedirectUri = redirectUri || redirect_uri || "";
+
+      if (clientId && clientSecret) {
+        try {
+          const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+              code,
+              client_id: clientId,
+              client_secret: clientSecret,
+              redirect_uri: targetRedirectUri,
+              grant_type: "authorization_code",
+            }),
+          });
+          const tokenData = (await tokenRes.json()) as any;
+          if (tokenData.access_token) {
+            effectiveToken = tokenData.access_token;
+          } else if (tokenData.id_token) {
+            effectiveToken = tokenData.id_token;
+          }
+        } catch (codeErr) {
+          logger.warn({ err: codeErr }, "Google authorization code exchange failed");
+        }
+      }
+    }
+
+    // 2. If an OAuth token is supplied (or exchanged), verify it with Google APIs
+    if (effectiveToken) {
       try {
         const gRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-          headers: { Authorization: `Bearer ${googleAuthToken}` },
+          headers: { Authorization: `Bearer ${effectiveToken}` },
         });
         if (gRes.ok) {
           const gData = (await gRes.json()) as any;
@@ -305,7 +352,7 @@ async function handleGoogleAuth(req: Request, res: Response) {
           if (gData.picture && !userPicture) userPicture = gData.picture;
           if (gData.sub && !userGoogleId) userGoogleId = gData.sub;
         } else {
-          const idRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(googleAuthToken)}`);
+          const idRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(effectiveToken)}`);
           if (idRes.ok) {
             const idData = (await idRes.json()) as any;
             if (idData.email) userEmail = idData.email.trim().toLowerCase();
@@ -381,6 +428,7 @@ async function handleGoogleAuth(req: Request, res: Response) {
               avatarUrl: userPicture || undefined,
               googleId: userGoogleId || undefined,
               authProvider: "google",
+              emailVerified: true,
             },
           },
         );
@@ -450,6 +498,7 @@ async function handleGoogleAuth(req: Request, res: Response) {
         avatarUrl: userPicture || "",
         googleId: userGoogleId || "",
         authProvider: "google",
+        emailVerified: true,
       });
 
       await UserProfile.findOneAndUpdate(
