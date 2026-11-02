@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: talentiq-api
+    runtime: node
+    plan: free
+    region: oregon
+    branch: main
+    buildCommand: pnpm install --frozen-lockfile && pnpm run build:api
+    startCommand: pnpm run start:api
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 20
+      - key: MONGODB_URI
+        sync: false
+      - key: CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
