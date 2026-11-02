@@ -1,32 +1,30 @@
 import mongoose from "mongoose";
 
-const MONGODB_URI = process.env.MONGODB_URI;
-
-if (!MONGODB_URI) {
-  throw new Error(
-    "MONGODB_URI must be set. Did you forget to add it to your .env file?",
-  );
-}
+const DEFAULT_ATLAS_URI =
+  "mongodb+srv://jagathraj0k7_db_user:jagathdb26@cluster0.qfcx2z1.mongodb.net/talentiq?appName=Cluster0";
 
 let isConnected = false;
 
 export async function connectDB(): Promise<void> {
   if (isConnected) return;
 
+  const uri = process.env.MONGODB_URI || DEFAULT_ATLAS_URI;
+
   try {
-    await mongoose.connect(MONGODB_URI as string, {
+    console.log("Connecting to MongoDB Atlas...");
+    await mongoose.connect(uri, {
       dbName: "talentiq",
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 15000,
     });
     isConnected = true;
-    console.log("✅ Connected to MongoDB Atlas");
+    console.log("✅ Connected to MongoDB Atlas successfully");
   } catch (err: any) {
     console.warn(
-      `⚠️ Failed to connect to primary MongoDB URI: ${err?.message || err}\nChecking local MongoDB (mongodb://127.0.0.1:27017/talentiq)...`
+      `⚠️ MongoDB Atlas connection attempt failed: ${err?.message || err}\nChecking local MongoDB (mongodb://127.0.0.1:27017/talentiq)...`
     );
     try {
       await mongoose.connect("mongodb://127.0.0.1:27017/talentiq", {
-        serverSelectionTimeoutMS: 3000,
+        serverSelectionTimeoutMS: 5000,
       });
       isConnected = true;
       console.log("✅ Successfully connected to local MongoDB fallback!");
