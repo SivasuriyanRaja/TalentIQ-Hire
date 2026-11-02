@@ -24,8 +24,14 @@ export function getApiBaseUrl(): string {
       : `https://${clean}`;
   }
 
-  // 2. Web browser: localhost:5000 works directly
+  // 2. Web browser: use window.location.origin if deployed (e.g. Vercel), fallback to localhost:5000 in dev
   if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined' && window.location?.origin) {
+      const host = window.location.hostname;
+      if (host && host !== 'localhost' && host !== '127.0.0.1') {
+        return window.location.origin;
+      }
+    }
     return 'http://localhost:5000';
   }
 

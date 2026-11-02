@@ -4,9 +4,11 @@
   "license": "MIT",
   "scripts": {
     "preinstall": "node -e \"const a=process.env.npm_config_user_agent||'';if(!a.startsWith('pnpm')){process.stderr.write('Use pnpm instead\\n');process.exit(1)}\"",
-    "build": "pnpm run build:api",
-    "start": "pnpm run start:api",
+    "build": "pnpm run build:fullstack",
+    "build:fullstack": "pnpm run build:api && pnpm run build:web",
     "build:api": "pnpm --filter @workspace/api-server run build",
+    "build:web": "pnpm --filter @workspace/talentiq-mobile exec expo export --platform web",
+    "start": "pnpm run start:api",
     "start:api": "node artifacts/api-server/dist/index.mjs",
     "build:all": "pnpm -r --filter \"!@workspace/mockup-sandbox\" --if-present run build",
     "typecheck:libs": "tsc --build",

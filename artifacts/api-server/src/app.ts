@@ -14,9 +14,19 @@ import {
   getClerkProxyHost,
 } from "./middlewares/clerkProxyMiddleware";
 
-// Ensure the resume upload directory exists
-export const RESUME_UPLOAD_DIR = path.join(process.cwd(), "uploads", "resumes");
-fs.mkdirSync(RESUME_UPLOAD_DIR, { recursive: true });
+import os from "os";
+
+// Ensure the resume upload directory exists (fallback to os.tmpdir in serverless environments like Vercel)
+export const RESUME_UPLOAD_DIR =
+  process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME
+    ? path.join(os.tmpdir(), "uploads", "resumes")
+    : path.join(process.cwd(), "uploads", "resumes");
+
+try {
+  fs.mkdirSync(RESUME_UPLOAD_DIR, { recursive: true });
+} catch {
+  // Gracefully continue in read-only serverless filesystems
+}
 
 const app: Express = express();
 
