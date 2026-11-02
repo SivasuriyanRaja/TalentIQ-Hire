@@ -17,6 +17,7 @@ import { UserRole, WorldRegion } from '@/data/talentiq';
 import { useColors } from '@/hooks/useColors';
 import { useTalentIQ } from '@/state/TalentIQContext';
 import { REGION_OPTIONS } from '@/utils/regionUtils';
+import { GoogleIcon } from '@/components/GoogleIcon';
 
 // Allowed MIME types for resume upload
 const ALLOWED_MIME_TYPES = [
@@ -193,9 +194,17 @@ export default function ProfileScreen() {
           <Text style={[styles.identityName, { color: colors.foreground }]}>
             {displayName}
           </Text>
-          <Text style={[styles.identityMeta, { color: colors.mutedForeground }]}>
-            {displayEmail}
-          </Text>
+          <View style={styles.identityMetaRow}>
+            {authUser?.authProvider === 'google' ? (
+              <View style={[styles.googleBadge, { backgroundColor: colors.accent, borderColor: colors.border }]}>
+                <GoogleIcon size={11} />
+                <Text style={[styles.googleBadgeText, { color: colors.accentForeground }]}>Google</Text>
+              </View>
+            ) : null}
+            <Text style={[styles.identityMeta, { color: colors.mutedForeground }]}>
+              {displayEmail}
+            </Text>
+          </View>
         </View>
         <View style={[styles.roleTag, { backgroundColor: colors.accent }]}>
           <Text style={[styles.roleText, { color: colors.accentForeground }]}>
@@ -604,7 +613,21 @@ const styles = StyleSheet.create({
   identityCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 15 },
   identityCopy: { flex: 1, gap: 5 },
   identityName: { fontFamily: 'Inter_700Bold', fontSize: 15 },
+  identityMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   identityMeta: { fontFamily: 'Inter_400Regular', fontSize: 10 },
+  googleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  googleBadgeText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 9,
+  },
   roleTag: { borderRadius: 999, paddingHorizontal: 9, paddingVertical: 7 },
   roleText: { fontFamily: 'Inter_600SemiBold', fontSize: 9 },
   stats: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 5 },

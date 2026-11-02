@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   Platform,
   Pressable,
@@ -15,6 +16,16 @@ import * as Haptics from 'expo-haptics';
 import { GoogleIcon } from '@/components/GoogleIcon';
 import { UserRole } from '@/data/talentiq';
 import { useColors } from '@/hooks/useColors';
+import {
+  getEffectiveGoogleClientId,
+  getGoogleOAuthRedirectUri,
+  getSavedGoogleAccounts,
+  recordSavedGoogleAccount,
+  removeSavedGoogleAccount,
+  saveGoogleClientId,
+  startGoogleOAuthFlow,
+  SavedGoogleAccount,
+} from '@/lib/googleAuth';
 
 export interface GoogleProfilePayload {
   email: string;
@@ -29,47 +40,8 @@ interface GoogleAccountModalProps {
   selectedRole?: UserRole;
   onClose: () => void;
   onSelectAccount: (payload: GoogleProfilePayload) => Promise<void>;
+  onOAuthSuccess?: (token: string) => Promise<void>;
 }
-
-interface QuickAccount {
-  id: string;
-  name: string;
-  email: string;
-  roleHint: string;
-  avatarBg: string;
-  avatarText: string;
-  picture?: string;
-}
-
-const PRESET_ACCOUNTS: QuickAccount[] = [
-  {
-    id: 'google_user_primary',
-    name: 'Sivasuriyan Raja',
-    email: 'sivasuriyanraja569@gmail.com',
-    roleHint: 'Personal Google Account',
-    avatarBg: '#4285F4',
-    avatarText: 'SR',
-    picture: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120',
-  },
-  {
-    id: 'google_candidate_demo',
-    name: 'Alex Morgan',
-    email: 'alex.morgan@gmail.com',
-    roleHint: 'Candidate Account',
-    avatarBg: '#34A853',
-    avatarText: 'AM',
-    picture: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120',
-  },
-  {
-    id: 'google_recruiter_demo',
-    name: 'Sarah Lin',
-    email: 'sarah.recruiter@gmail.com',
-    roleHint: 'Talent Acquisition Partner',
-    avatarBg: '#EA4335',
-    avatarText: 'SL',
-    picture: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=120',
-  },
-];
 
 export function GoogleAccountModal({
   visible,
@@ -77,50 +49,145 @@ export function GoogleAccountModal({
   selectedRole = 'candidate',
   onClose,
   onSelectAccount,
+  onOAuthSuccess,
 }: GoogleAccountModalProps) {
   const colors = useColors();
   const [loadingId, setLoadingId] = useState<string | null>(null);
-  const [showCustomForm, setShowCustomForm] = useState(false);
-  const [customName, setCustomName] = useState('');
-  const [customEmail, setCustomEmail] = useState('');
-  const [customError, setCustomError] = useState('');
+  const [activeTab, setActiveTab] = useState<'account' | 'oauth'>('account');
+
+  // Real accounts remembered on this device
+  const [savedAccounts, setSavedAccounts] = useState<SavedGoogleAccount[]>([]);
+
+  // Direct Google account form
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  // OAuth Client ID state
+  const [clientId, setClientId] = useState('');
+  const [isOAuthAvailable, setIsOAuthAvailable] = useState(false);
+  const [copiedRedirectUri, setCopiedRedirectUri] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      void loadInitialState();
+    }
+  }, [visible]);
+
+  const loadInitialState = async () => {
+    try {
+      const accounts = await getSavedGoogleAccounts();
+      setSavedAccounts(accounts);
+
+      const effectiveId = await getEffectiveGoogleClientId();
+      setClientId(effectiveId);
+      setIsOAuthAvailable(Boolean(effectiveId && effectiveId.length > 10));
+
+      // If user has a saved account, pre-fill for ease of use
+      if (accounts.length > 0 && !email) {
+        setEmail(accounts[0].email);
+        setName(accounts[0].name);
+      }
+    } catch {}
+  };
 
   const handleSelect = async (account: GoogleProfilePayload, idTag: string) => {
     try {
+      setErrorMsg('');
       setLoadingId(idTag);
       void Haptics.selectionAsync();
+
       await onSelectAccount(account);
-    } catch {
-      // Error handled by parent
+      await recordSavedGoogleAccount(account);
+      const updated = await getSavedGoogleAccounts();
+      setSavedAccounts(updated);
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Failed to authenticate with Google. Please try again.');
     } finally {
       setLoadingId(null);
     }
   };
 
-  const handleCustomSubmit = async () => {
-    setCustomError('');
-    const cleanEmail = customEmail.trim().toLowerCase();
-    const cleanName = customName.trim();
+  const handleAccountSubmit = async () => {
+    setErrorMsg('');
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanName = name.trim() || cleanEmail.split('@')[0] || 'Google User';
 
     if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
-      setCustomError('Please enter a valid Google account email.');
+      setErrorMsg('Please enter a valid Google account email.');
       return;
     }
 
-    if (!cleanName) {
-      setCustomError('Please enter your full name.');
-      return;
-    }
+    const payload: GoogleProfilePayload = {
+      email: cleanEmail,
+      name: cleanName,
+      googleId: `google_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}`,
+      picture: `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanName)}&background=4285F4&color=fff&size=128`,
+    };
 
-    await handleSelect(
-      {
-        email: cleanEmail,
-        name: cleanName,
-        googleId: `google_custom_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}`,
-        picture: `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanName)}&background=4285F4&color=fff`,
-      },
-      'custom',
+    await handleSelect(payload, 'form_submit');
+  };
+
+  const handleLaunchBrowserOAuth = async () => {
+    setErrorMsg('');
+    setLoadingId('oauth_browser');
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    try {
+      const oauthResult = await startGoogleOAuthFlow({
+        intent,
+        role: selectedRole,
+      });
+
+      if (oauthResult?.token) {
+        if (onOAuthSuccess) {
+          await onOAuthSuccess(oauthResult.token);
+        } else {
+          await onSelectAccount({
+            email: '',
+            name: '',
+            googleId: '',
+          });
+        }
+        onClose();
+      } else if (oauthResult?.error) {
+        setErrorMsg(oauthResult.error);
+      }
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Google browser login encountered an error.');
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
+  const handleSaveClientId = async () => {
+    const clean = clientId.trim();
+    await saveGoogleClientId(clean);
+    setIsOAuthAvailable(Boolean(clean && clean.length > 10));
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Alert.alert(
+      'Client ID Saved',
+      clean
+        ? 'Google OAuth Client ID has been configured for accounts.google.com authentication.'
+        : 'Google OAuth Client ID cleared.',
     );
+  };
+
+  const handleCopyRedirectUri = () => {
+    const uri = getGoogleOAuthRedirectUri();
+    if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(uri);
+      setCopiedRedirectUri(true);
+      setTimeout(() => setCopiedRedirectUri(false), 2000);
+    } else {
+      Alert.alert('Google Authorized Redirect URI', uri);
+    }
+  };
+
+  const handleRemoveSaved = async (accountEmail: string) => {
+    await removeSavedGoogleAccount(accountEmail);
+    const updated = await getSavedGoogleAccounts();
+    setSavedAccounts(updated);
   };
 
   return (
@@ -145,12 +212,12 @@ export function GoogleAccountModal({
             },
           ]}
         >
-          {/* Top Bar with Google Branding */}
+          {/* Header */}
           <View style={styles.header}>
             <View style={styles.brandRow}>
               <GoogleIcon size={22} />
               <Text style={[styles.googleTitle, { color: colors.foreground }]}>
-                Sign in with Google
+                Google Sign-In
               </Text>
             </View>
 
@@ -158,308 +225,328 @@ export function GoogleAccountModal({
               disabled={Boolean(loadingId)}
               onPress={onClose}
               hitSlop={10}
-              style={({ pressed }) => [
-                styles.closeButton,
-                { opacity: pressed ? 0.6 : 1 },
-              ]}
-              accessibilityLabel="Close account chooser"
+              style={({ pressed }) => [styles.closeBtn, { opacity: pressed ? 0.6 : 1 }]}
             >
               <Feather name="x" size={20} color={colors.mutedForeground} />
             </Pressable>
           </View>
 
-          {/* Context Subtitle & Intent Badge */}
+          {/* Subtitle / Mode Indicator */}
           <View style={styles.subtitleBlock}>
             <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-              Choose an account to continue to{' '}
-              <Text style={{ fontWeight: '700', color: colors.foreground }}>
-                TalentIQ AI
-              </Text>
+              {intent === 'sign-up'
+                ? `Create a verified ${selectedRole.toUpperCase()} account with Google`
+                : 'Sign in to TalentIQ with your Google Account'}
             </Text>
+          </View>
 
-            <View
+          {/* Mode Switch Tabs */}
+          <View style={[styles.tabBar, { backgroundColor: colors.secondary }]}>
+            <Pressable
+              onPress={() => setActiveTab('account')}
               style={[
-                styles.badge,
-                {
-                  backgroundColor:
-                    intent === 'sign-up' ? colors.primary + '18' : colors.secondary,
-                  borderColor:
-                    intent === 'sign-up' ? colors.primary + '40' : colors.border,
+                styles.tabBtn,
+                activeTab === 'account' && {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
                 },
               ]}
             >
               <Feather
-                name={intent === 'sign-up' ? 'user-plus' : 'log-in'}
-                size={12}
-                color={intent === 'sign-up' ? colors.primary : colors.foreground}
+                name="user-check"
+                size={14}
+                color={activeTab === 'account' ? colors.primary : colors.mutedForeground}
               />
               <Text
                 style={[
-                  styles.badgeText,
-                  {
-                    color:
-                      intent === 'sign-up' ? colors.primary : colors.foreground,
-                  },
+                  styles.tabBtnText,
+                  { color: activeTab === 'account' ? colors.foreground : colors.mutedForeground },
                 ]}
               >
-                {intent === 'sign-up'
-                  ? `CREATE ACCOUNT AS ${selectedRole.toUpperCase()}`
-                  : 'SIGN IN TO TALENTIQ'}
+                Google Account
               </Text>
-            </View>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setActiveTab('oauth')}
+              style={[
+                styles.tabBtn,
+                activeTab === 'oauth' && {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <Feather
+                name="globe"
+                size={14}
+                color={activeTab === 'oauth' ? colors.primary : colors.mutedForeground}
+              />
+              <Text
+                style={[
+                  styles.tabBtnText,
+                  { color: activeTab === 'oauth' ? colors.foreground : colors.mutedForeground },
+                ]}
+              >
+                OAuth 2.0 Web Flow
+              </Text>
+            </Pressable>
           </View>
 
-          {/* Account Choices List */}
-          <ScrollView
-            style={styles.accountsList}
-            showsVerticalScrollIndicator={false}
-          >
-            {PRESET_ACCOUNTS.map((acc) => {
-              const isThisLoading = loadingId === acc.id;
-              return (
-                <Pressable
-                  key={acc.id}
-                  disabled={Boolean(loadingId)}
-                  onPress={() =>
-                    handleSelect(
-                      {
-                        email: acc.email,
-                        name: acc.name,
-                        picture: acc.picture,
-                        googleId: acc.id,
-                      },
-                      acc.id,
-                    )
-                  }
-                  style={({ pressed }) => [
-                    styles.accountItem,
-                    {
-                      borderColor: colors.border,
-                      backgroundColor: pressed ? colors.accent : 'transparent',
-                      opacity: loadingId && !isThisLoading ? 0.45 : 1,
-                    },
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.avatarBadge,
-                      { backgroundColor: acc.avatarBg },
-                    ]}
-                  >
-                    <Text style={styles.avatarText}>{acc.avatarText}</Text>
-                  </View>
-
-                  <View style={styles.accountInfo}>
-                    <Text
-                      style={[styles.accountName, { color: colors.foreground }]}
-                      numberOfLines={1}
-                    >
-                      {acc.name}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.accountEmail,
-                        { color: colors.mutedForeground },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {acc.email}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.accountHint,
-                        { color: colors.mutedForeground },
-                      ]}
-                    >
-                      {acc.roleHint}
-                    </Text>
-                  </View>
-
-                  {isThisLoading ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
-                  ) : (
-                    <Feather
-                      name="chevron-right"
-                      size={18}
-                      color={colors.mutedForeground}
-                    />
-                  )}
-                </Pressable>
-              );
-            })}
-
-            {/* Use Another Account Toggle */}
-            {!showCustomForm ? (
-              <Pressable
-                disabled={Boolean(loadingId)}
-                onPress={() => {
-                  void Haptics.selectionAsync();
-                  setShowCustomForm(true);
-                }}
-                style={({ pressed }) => [
-                  styles.useAnotherButton,
-                  {
-                    borderColor: colors.border,
-                    backgroundColor: pressed ? colors.accent : 'transparent',
-                  },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.useAnotherIcon,
-                    { backgroundColor: colors.secondary },
-                  ]}
-                >
-                  <Feather
-                    name="user-plus"
-                    size={16}
-                    color={colors.foreground}
-                  />
-                </View>
-                <Text
-                  style={[
-                    styles.useAnotherText,
-                    { color: colors.foreground },
-                  ]}
-                >
-                  Use another Google account
+          <ScrollView style={styles.scrollArea} showsVerticalScrollIndicator={false}>
+            {errorMsg ? (
+              <View style={[styles.errorCard, { backgroundColor: colors.destructive + '15' }]}>
+                <Feather name="alert-circle" size={15} color={colors.destructive} />
+                <Text style={[styles.errorText, { color: colors.destructive }]}>
+                  {errorMsg}
                 </Text>
-              </Pressable>
-            ) : (
-              <View
-                style={[
-                  styles.customFormCard,
-                  {
-                    backgroundColor: colors.secondary,
-                    borderColor: colors.border,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.customFormTitle,
-                    { color: colors.foreground },
-                  ]}
-                >
-                  Enter Google Account Details
-                </Text>
+              </View>
+            ) : null}
 
-                <View style={styles.inputGroup}>
-                  <Text
-                    style={[
-                      styles.inputLabel,
-                      { color: colors.mutedForeground },
-                    ]}
-                  >
-                    Google Email
-                  </Text>
-                  <TextInput
-                    value={customEmail}
-                    onChangeText={setCustomEmail}
-                    placeholder="you@gmail.com"
-                    placeholderTextColor={colors.mutedForeground}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    style={[
-                      styles.inputField,
-                      {
-                        backgroundColor: colors.background,
-                        borderColor: colors.border,
-                        color: colors.foreground,
-                      },
-                    ]}
-                  />
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text
-                    style={[
-                      styles.inputLabel,
-                      { color: colors.mutedForeground },
-                    ]}
-                  >
-                    Full Name
-                  </Text>
-                  <TextInput
-                    value={customName}
-                    onChangeText={setCustomName}
-                    placeholder="Your Name"
-                    placeholderTextColor={colors.mutedForeground}
-                    autoCapitalize="words"
-                    style={[
-                      styles.inputField,
-                      {
-                        backgroundColor: colors.background,
-                        borderColor: colors.border,
-                        color: colors.foreground,
-                      },
-                    ]}
-                  />
-                </View>
-
-                {customError ? (
-                  <Text style={styles.errorText}>{customError}</Text>
-                ) : null}
-
-                <View style={styles.customFormActions}>
-                  <Pressable
-                    disabled={Boolean(loadingId)}
-                    onPress={() => setShowCustomForm(false)}
-                    style={[
-                      styles.customCancelBtn,
-                      { borderColor: colors.border },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.customCancelText,
-                        { color: colors.foreground },
-                      ]}
-                    >
-                      Cancel
+            {activeTab === 'account' ? (
+              <View style={styles.tabContent}>
+                {/* Remembered Accounts on this device */}
+                {savedAccounts.length > 0 ? (
+                  <View style={styles.savedSection}>
+                    <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+                      Previously used accounts:
                     </Text>
-                  </Pressable>
-
-                  <Pressable
-                    disabled={Boolean(loadingId)}
-                    onPress={handleCustomSubmit}
-                    style={[
-                      styles.customSubmitBtn,
-                      { backgroundColor: colors.primary },
-                    ]}
-                  >
-                    {loadingId === 'custom' ? (
-                      <ActivityIndicator
-                        size="small"
-                        color={colors.primaryForeground}
-                      />
-                    ) : (
-                      <Text
+                    {savedAccounts.map((acc) => (
+                      <View
+                        key={acc.email}
                         style={[
-                          styles.customSubmitText,
-                          { color: colors.primaryForeground },
+                          styles.savedAccountRow,
+                          {
+                            backgroundColor: colors.accent,
+                            borderColor: colors.border,
+                          },
                         ]}
                       >
-                        Continue with Google
-                      </Text>
+                        <Pressable
+                          style={styles.savedAccountPress}
+                          disabled={Boolean(loadingId)}
+                          onPress={() =>
+                            handleSelect(
+                              {
+                                email: acc.email,
+                                name: acc.name,
+                                picture: acc.picture,
+                                googleId: acc.googleId,
+                              },
+                              acc.email,
+                            )
+                          }
+                        >
+                          <View style={styles.accountInitial}>
+                            <Text style={styles.accountInitialText}>
+                              {acc.name ? acc.name.charAt(0).toUpperCase() : 'G'}
+                            </Text>
+                          </View>
+                          <View style={styles.accountDetails}>
+                            <Text style={[styles.accountName, { color: colors.accentForeground }]}>
+                              {acc.name}
+                            </Text>
+                            <Text style={[styles.accountEmail, { color: colors.mutedForeground }]}>
+                              {acc.email}
+                            </Text>
+                          </View>
+                          {loadingId === acc.email ? (
+                            <ActivityIndicator size="small" color={colors.primary} />
+                          ) : (
+                            <Feather name="arrow-right" size={16} color={colors.primary} />
+                          )}
+                        </Pressable>
+
+                        <Pressable
+                          onPress={() => handleRemoveSaved(acc.email)}
+                          hitSlop={8}
+                          style={styles.removeSavedBtn}
+                        >
+                          <Feather name="trash-2" size={14} color={colors.mutedForeground} />
+                        </Pressable>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+
+                {/* Direct Google Account Form */}
+                <View style={styles.formBlock}>
+                  <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+                    {savedAccounts.length > 0
+                      ? 'Or enter another Google account:'
+                      : 'Enter your Google account details:'}
+                  </Text>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={[styles.inputLabel, { color: colors.foreground }]}>
+                      Google Email Address
+                    </Text>
+                    <View
+                      style={[
+                        styles.inputWrapper,
+                        { backgroundColor: colors.background, borderColor: colors.border },
+                      ]}
+                    >
+                      <Feather name="mail" size={16} color={colors.mutedForeground} />
+                      <TextInput
+                        value={email}
+                        onChangeText={setEmail}
+                        placeholder="you@gmail.com"
+                        placeholderTextColor={colors.mutedForeground}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        style={[styles.inputField, { color: colors.foreground }]}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={[styles.inputLabel, { color: colors.foreground }]}>
+                      Full Name
+                    </Text>
+                    <View
+                      style={[
+                        styles.inputWrapper,
+                        { backgroundColor: colors.background, borderColor: colors.border },
+                      ]}
+                    >
+                      <Feather name="user" size={16} color={colors.mutedForeground} />
+                      <TextInput
+                        value={name}
+                        onChangeText={setName}
+                        placeholder="e.g. Sivasuriyan Raja"
+                        placeholderTextColor={colors.mutedForeground}
+                        autoCapitalize="words"
+                        style={[styles.inputField, { color: colors.foreground }]}
+                      />
+                    </View>
+                  </View>
+
+                  <Pressable
+                    disabled={Boolean(loadingId)}
+                    onPress={handleAccountSubmit}
+                    style={({ pressed }) => [
+                      styles.submitBtn,
+                      {
+                        backgroundColor: colors.primary,
+                        opacity: loadingId || pressed ? 0.8 : 1,
+                      },
+                    ]}
+                  >
+                    {loadingId === 'form_submit' ? (
+                      <ActivityIndicator size="small" color={colors.primaryForeground} />
+                    ) : (
+                      <>
+                        <GoogleIcon size={18} />
+                        <Text style={[styles.submitBtnText, { color: colors.primaryForeground }]}>
+                          {intent === 'sign-up'
+                            ? `Sign Up as ${selectedRole.toUpperCase()} with Google`
+                            : 'Sign In with Google'}
+                        </Text>
+                      </>
                     )}
                   </Pressable>
                 </View>
               </View>
+            ) : (
+              /* OAuth 2.0 Browser Authentication Tab */
+              <View style={styles.tabContent}>
+                <View style={[styles.infoBox, { backgroundColor: colors.secondary }]}>
+                  <Feather name="shield" size={16} color={colors.primary} />
+                  <Text style={[styles.infoBoxText, { color: colors.secondaryForeground }]}>
+                    Direct OAuth 2.0 authenticates directly via Google's secure{' '}
+                    <Text style={{ fontWeight: '700' }}>accounts.google.com</Text> browser
+                    window with full Google credentials verification.
+                  </Text>
+                </View>
+
+                {isOAuthAvailable ? (
+                  <Pressable
+                    disabled={Boolean(loadingId)}
+                    onPress={handleLaunchBrowserOAuth}
+                    style={({ pressed }) => [
+                      styles.launchOAuthBtn,
+                      {
+                        backgroundColor: '#4285F4',
+                        opacity: loadingId || pressed ? 0.8 : 1,
+                      },
+                    ]}
+                  >
+                    {loadingId === 'oauth_browser' ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <>
+                        <GoogleIcon size={18} />
+                        <Text style={styles.launchOAuthBtnText}>
+                          Open accounts.google.com
+                        </Text>
+                      </>
+                    )}
+                  </Pressable>
+                ) : null}
+
+                <View style={styles.configBlock}>
+                  <Text style={[styles.inputLabel, { color: colors.foreground }]}>
+                    Google OAuth Client ID
+                  </Text>
+                  <View
+                    style={[
+                      styles.inputWrapper,
+                      { backgroundColor: colors.background, borderColor: colors.border },
+                    ]}
+                  >
+                    <Feather name="key" size={16} color={colors.mutedForeground} />
+                    <TextInput
+                      value={clientId}
+                      onChangeText={setClientId}
+                      placeholder="xxxx.apps.googleusercontent.com"
+                      placeholderTextColor={colors.mutedForeground}
+                      autoCapitalize="none"
+                      style={[styles.inputField, { color: colors.foreground }]}
+                    />
+                  </View>
+
+                  <Pressable
+                    onPress={handleSaveClientId}
+                    style={[styles.saveIdBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  >
+                    <Feather name="check" size={14} color={colors.primary} />
+                    <Text style={[styles.saveIdBtnText, { color: colors.foreground }]}>
+                      Save Client ID
+                    </Text>
+                  </Pressable>
+
+                  {/* Redirect URI snippet */}
+                  <View style={styles.redirectUriBlock}>
+                    <Text style={[styles.redirectUriLabel, { color: colors.mutedForeground }]}>
+                      Authorized redirect URI for Google Console:
+                    </Text>
+                    <Pressable
+                      onPress={handleCopyRedirectUri}
+                      style={[styles.redirectUriRow, { backgroundColor: colors.background, borderColor: colors.border }]}
+                    >
+                      <Text
+                        style={[styles.redirectUriText, { color: colors.foreground }]}
+                        numberOfLines={1}
+                      >
+                        {getGoogleOAuthRedirectUri()}
+                      </Text>
+                      <View style={styles.copyAction}>
+                        <Feather
+                          name={copiedRedirectUri ? 'check' : 'copy'}
+                          size={13}
+                          color={colors.primary}
+                        />
+                        <Text style={[styles.copyActionText, { color: colors.primary }]}>
+                          {copiedRedirectUri ? 'Copied' : 'Copy'}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  </View>
+                </View>
+              </View>
             )}
           </ScrollView>
-
-          {/* Privacy & Terms footer */}
-          <View style={styles.footer}>
-            <Feather name="shield" size={13} color={colors.mutedForeground} />
-            <Text
-              style={[styles.footerText, { color: colors.mutedForeground }]}
-            >
-              Google will share your name, email address, and profile picture with
-              TalentIQ AI to establish your secure identity.
-            </Text>
-          </View>
         </View>
       </View>
     </Modal>
@@ -472,7 +559,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.65)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 16,
   },
   backdropPressable: {
     position: 'absolute',
@@ -484,192 +571,245 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: 440,
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
     maxHeight: '90%',
+    borderRadius: 24,
+    borderWidth: 1,
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 10,
   },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 9,
   },
   googleTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    fontFamily: Platform.select({ ios: 'System', android: 'Roboto' }),
+    fontFamily: 'Inter_700Bold',
+    fontSize: 17,
   },
-  closeButton: {
-    padding: 4,
+  closeBtn: {
+    padding: 6,
   },
   subtitleBlock: {
-    marginBottom: 16,
-    gap: 8,
+    paddingHorizontal: 20,
+    paddingBottom: 12,
   },
   subtitle: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontFamily: 'Inter_400Regular',
+    fontSize: 12,
+    lineHeight: 16,
   },
-  badge: {
+  tabBar: {
     flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 6,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-  },
-  accountsList: {
-    maxHeight: 340,
-  },
-  accountItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
+    marginHorizontal: 16,
+    padding: 4,
     borderRadius: 12,
-    borderWidth: 1,
+    gap: 6,
     marginBottom: 10,
-    gap: 12,
   },
-  avatarBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
+  tabBtn: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
-  avatarText: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: '700',
+  tabBtnText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 11,
   },
-  accountInfo: {
+  scrollArea: {
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+  },
+  tabContent: {
+    gap: 16,
+    paddingBottom: 16,
+  },
+  errorCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  errorText: {
+    flex: 1,
+    fontFamily: 'Inter_500Medium',
+    fontSize: 12,
+  },
+  savedSection: {
+    gap: 8,
+  },
+  sectionLabel: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  savedAccountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingRight: 8,
+    overflow: 'hidden',
+  },
+  savedAccountPress: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+  },
+  accountInitial: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#4285F4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  accountInitialText: {
+    color: '#FFFFFF',
+    fontFamily: 'Inter_700Bold',
+    fontSize: 15,
+  },
+  accountDetails: {
     flex: 1,
   },
   accountName: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 2,
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 13,
   },
   accountEmail: {
-    fontSize: 12,
-    marginBottom: 2,
-  },
-  accountHint: {
+    fontFamily: 'Inter_400Regular',
     fontSize: 11,
-    fontStyle: 'italic',
   },
-  useAnotherButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderStyle: 'dashed',
+  removeSavedBtn: {
+    padding: 8,
+  },
+  formBlock: {
     gap: 12,
-    marginTop: 2,
-    marginBottom: 14,
-  },
-  useAnotherIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  useAnotherText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  customFormCard: {
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginTop: 4,
-    marginBottom: 14,
-    gap: 10,
-  },
-  customFormTitle: {
-    fontSize: 13,
-    fontWeight: '700',
   },
   inputGroup: {
-    gap: 4,
+    gap: 5,
   },
   inputLabel: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
   },
-  inputField: {
-    height: 40,
-    borderRadius: 8,
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    height: 46,
+    borderRadius: 12,
     borderWidth: 1,
     paddingHorizontal: 12,
+  },
+  inputField: {
+    flex: 1,
+    fontFamily: 'Inter_400Regular',
     fontSize: 13,
   },
-  errorText: {
-    color: '#EF4444',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  customFormActions: {
+  submitBtn: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 8,
-    marginTop: 4,
-  },
-  customCancelBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  customCancelText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  customSubmitBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 48,
+    borderRadius: 14,
+    marginTop: 6,
   },
-  customSubmitText: {
-    fontSize: 12,
-    fontWeight: '700',
+  submitBtnText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 13,
   },
-  footer: {
+  infoBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 8,
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(150, 150, 150, 0.25)',
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
   },
-  footerText: {
+  infoBoxText: {
     flex: 1,
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  launchOAuthBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 48,
+    borderRadius: 14,
+  },
+  launchOAuthBtnText: {
+    color: '#FFFFFF',
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 13,
+  },
+  configBlock: {
+    gap: 10,
+    marginTop: 6,
+  },
+  saveIdBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: 38,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  saveIdBtnText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+  },
+  redirectUriBlock: {
+    gap: 5,
+    marginTop: 4,
+  },
+  redirectUriLabel: {
+    fontFamily: 'Inter_500Medium',
     fontSize: 10.5,
-    lineHeight: 15,
+  },
+  redirectUriRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  redirectUriText: {
+    flex: 1,
+    fontFamily: 'Inter_400Regular',
+    fontSize: 10,
+    marginRight: 6,
+  },
+  copyAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  copyActionText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 10,
   },
 });

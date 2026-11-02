@@ -1,19 +1,65 @@
 import { Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
-import { isClerkConfigured } from '@/lib/authBridge';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserRole } from '@/data/talentiq';
 
 // Complete WebBrowser auth session if returning from OAuth redirect
 WebBrowser.maybeCompleteAuthSession();
+
+export const GOOGLE_CLIENT_ID_STORAGE_KEY = 'talentiq.google_client_id';
+export const SAVED_GOOGLE_ACCOUNTS_KEY = 'talentiq.google_saved_accounts';
 
 export interface GoogleAuthOptions {
   role?: UserRole;
   intent?: 'sign-in' | 'sign-up';
 }
 
+export interface SavedGoogleAccount {
+  email: string;
+  name: string;
+  picture?: string;
+  googleId?: string;
+  lastUsedAt: string;
+}
+
 /**
- * Returns true if real Google Client ID is configured in environment variables
+ * Retrieves the effective Google Client ID from process.env or AsyncStorage
+ */
+export async function getEffectiveGoogleClientId(): Promise<string> {
+  const envKey =
+    process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ||
+    process.env.GOOGLE_CLIENT_ID ||
+    '';
+
+  if (envKey && !envKey.includes('REPLACE') && envKey.length > 10) {
+    return envKey.trim();
+  }
+
+  try {
+    const stored = await AsyncStorage.getItem(GOOGLE_CLIENT_ID_STORAGE_KEY);
+    if (stored && !stored.includes('REPLACE') && stored.length > 10) {
+      return stored.trim();
+    }
+  } catch {}
+
+  return '';
+}
+
+/**
+ * Saves a Google Client ID directly to AsyncStorage for instant in-app configuration
+ */
+export async function saveGoogleClientId(clientId: string): Promise<void> {
+  const clean = clientId.trim();
+  if (clean) {
+    await AsyncStorage.setItem(GOOGLE_CLIENT_ID_STORAGE_KEY, clean);
+  } else {
+    await AsyncStorage.removeItem(GOOGLE_CLIENT_ID_STORAGE_KEY);
+  }
+}
+
+/**
+ * Synchronous check whether Google OAuth Client ID is configured in process.env
  */
 export function isGoogleOAuthConfigured(): boolean {
   const clientId =
@@ -28,22 +74,29 @@ export function isGoogleOAuthConfigured(): boolean {
 }
 
 /**
- * Initiates Google OAuth 2.0 flow via WebBrowser or popup when Client ID is configured.
- * Returns the OAuth token/payload, or null if cancelled/failed.
+ * Computes the exact redirect URI based on current runtime platform
+ */
+export function getGoogleOAuthRedirectUri(): string {
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
+    return `${window.location.origin}/auth/callback`;
+  }
+  return Linking.createURL('/auth/callback');
+}
+
+/**
+ * Initiates Google OAuth 2.0 flow via WebBrowser with real accounts.google.com
  */
 export async function startGoogleOAuthFlow(
   options: GoogleAuthOptions = {},
 ): Promise<{ token?: string; error?: string } | null> {
-  const clientId =
-    process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ||
-    process.env.GOOGLE_CLIENT_ID;
+  const clientId = await getEffectiveGoogleClientId();
 
-  if (!clientId || clientId.includes('REPLACE')) {
-    return null;
+  if (!clientId) {
+    return { error: 'No Google Client ID configured' };
   }
 
   try {
-    const redirectUri = Linking.createURL('/auth/callback');
+    const redirectUri = getGoogleOAuthRedirectUri();
     const authUrl =
       `https://accounts.google.com/o/oauth2/v2/auth?` +
       `client_id=${encodeURIComponent(clientId)}&` +
@@ -55,7 +108,6 @@ export async function startGoogleOAuthFlow(
     const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
 
     if (result.type === 'success' && result.url) {
-      // Parse hash fragment for access_token or id_token
       const hashIndex = result.url.indexOf('#');
       const queryIndex = result.url.indexOf('?');
       const paramsString =
@@ -76,4 +128,55 @@ export async function startGoogleOAuthFlow(
   } catch (err: any) {
     return { error: err?.message || 'Google OAuth browser flow error' };
   }
+}
+
+/**
+ * Loads real remembered Google accounts from AsyncStorage
+ */
+export async function getSavedGoogleAccounts(): Promise<SavedGoogleAccount[]> {
+  try {
+    const raw = await AsyncStorage.getItem(SAVED_GOOGLE_ACCOUNTS_KEY);
+    if (raw) {
+      return JSON.parse(raw);
+    }
+  } catch {}
+  return [];
+}
+
+/**
+ * Saves an authenticated Google account to AsyncStorage
+ */
+export async function recordSavedGoogleAccount(account: {
+  email: string;
+  name: string;
+  picture?: string;
+  googleId?: string;
+}): Promise<void> {
+  try {
+    const existing = await getSavedGoogleAccounts();
+    const filtered = existing.filter(
+      (a) => a.email.toLowerCase() !== account.email.toLowerCase(),
+    );
+    filtered.unshift({
+      ...account,
+      lastUsedAt: new Date().toISOString(),
+    });
+    await AsyncStorage.setItem(
+      SAVED_GOOGLE_ACCOUNTS_KEY,
+      JSON.stringify(filtered.slice(0, 5)),
+    );
+  } catch {}
+}
+
+/**
+ * Removes a saved Google account from the list
+ */
+export async function removeSavedGoogleAccount(email: string): Promise<void> {
+  try {
+    const existing = await getSavedGoogleAccounts();
+    const filtered = existing.filter(
+      (a) => a.email.toLowerCase() !== email.toLowerCase(),
+    );
+    await AsyncStorage.setItem(SAVED_GOOGLE_ACCOUNTS_KEY, JSON.stringify(filtered));
+  } catch {}
 }

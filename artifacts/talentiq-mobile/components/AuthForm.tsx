@@ -25,6 +25,7 @@ import {
 import {
   isGoogleOAuthConfigured,
   startGoogleOAuthFlow,
+  getEffectiveGoogleClientId,
 } from '@/lib/googleAuth';
 import { UserRole } from '@/data/talentiq';
 import { useColors } from '@/hooks/useColors';
@@ -223,7 +224,8 @@ function SignInSection({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }) {
     setMessage('');
     void Haptics.selectionAsync();
 
-    if (isGoogleOAuthConfigured()) {
+    const clientId = await getEffectiveGoogleClientId();
+    if (clientId) {
       setGoogleLoading(true);
       try {
         const oauthResult = await startGoogleOAuthFlow({ intent: 'sign-in' });
@@ -237,7 +239,7 @@ function SignInSection({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }) {
             setMessage(res.error || 'Google authentication failed.');
           }
           return;
-        } else if (oauthResult?.error) {
+        } else if (oauthResult?.error && oauthResult.error !== 'dismissed') {
           setMessage(oauthResult.error);
           return;
         }
@@ -406,6 +408,9 @@ function SignInSection({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }) {
         intent="sign-in"
         onClose={() => setShowGoogleModal(false)}
         onSelectAccount={handleSelectGoogleAccount}
+        onOAuthSuccess={async (token) => {
+          await loginWithGoogle({ email: '', token, intent: 'sign-in' });
+        }}
       />
 
       {/* ── Quick Demo Evaluation Access ── */}
@@ -474,7 +479,8 @@ function SignUpSection({ onSwitchToSignIn }: { onSwitchToSignIn: () => void }) {
     setMessage('');
     void Haptics.selectionAsync();
 
-    if (isGoogleOAuthConfigured()) {
+    const clientId = await getEffectiveGoogleClientId();
+    if (clientId) {
       setGoogleLoading(true);
       try {
         const oauthResult = await startGoogleOAuthFlow({
@@ -492,7 +498,7 @@ function SignUpSection({ onSwitchToSignIn }: { onSwitchToSignIn: () => void }) {
             setMessage(res.error || 'Google account creation failed.');
           }
           return;
-        } else if (oauthResult?.error) {
+        } else if (oauthResult?.error && oauthResult.error !== 'dismissed') {
           setMessage(oauthResult.error);
           return;
         }
@@ -763,6 +769,14 @@ function SignUpSection({ onSwitchToSignIn }: { onSwitchToSignIn: () => void }) {
         selectedRole={selectedRole}
         onClose={() => setShowGoogleModal(false)}
         onSelectAccount={handleSelectGoogleAccount}
+        onOAuthSuccess={async (token) => {
+          await loginWithGoogle({
+            email: '',
+            token,
+            role: selectedRole,
+            intent: 'sign-up',
+          });
+        }}
       />
 
       <View style={styles.switchRow}>
