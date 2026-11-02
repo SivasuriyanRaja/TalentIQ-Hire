@@ -2,6 +2,7 @@ import path from "path";
 import fs from "fs";
 import express, { type Express } from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
 import { publishableKeyFromHost } from "@clerk/shared/keys";
@@ -41,6 +42,7 @@ app.use(
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
 app.use(cors({ credentials: true, origin: true }));
+app.use(cookieParser());
 
 // JSON + URL-encoded for standard API calls
 app.use(express.json({ limit: "1mb" }));
@@ -97,5 +99,11 @@ if (isClerkConfigured && clerkPubKey) {
 app.use("/uploads/resumes", express.static(RESUME_UPLOAD_DIR));
 
 app.use("/api", router);
+
+// Convenience alias so both /auth/google/callback and /api/auth/google/callback resolve
+app.get("/auth/google/callback", (req, res) => {
+  const query = req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : "";
+  res.redirect(`/api/auth/google/callback${query}`);
+});
 
 export default app;

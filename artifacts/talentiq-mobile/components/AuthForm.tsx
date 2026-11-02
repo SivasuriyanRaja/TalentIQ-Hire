@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Feather } from '@expo/vector-icons';
 import { useSignIn, useSignUp } from '@/lib/authBridge';
 import * as Haptics from 'expo-haptics';
-import { Href, useRouter } from 'expo-router';
+import { Href, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   Alert,
@@ -19,13 +19,8 @@ import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollV
 import { Wordmark } from '@/components/ui';
 import { GoogleIcon } from '@/components/GoogleIcon';
 import {
-  GoogleAccountModal,
-  GoogleProfilePayload,
-} from '@/components/GoogleAccountModal';
-import {
   isGoogleOAuthConfigured,
-  startGoogleOAuthFlow,
-  getEffectiveGoogleClientId,
+  initiateGoogleOAuth,
 } from '@/lib/googleAuth';
 import { UserRole } from '@/data/talentiq';
 import { useColors } from '@/hooks/useColors';
@@ -218,56 +213,31 @@ function SignInSection({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }) {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [showGoogleModal, setShowGoogleModal] = useState(false);
+  const searchParams = useLocalSearchParams<{ error?: string; message?: string }>();
+
+  useEffect(() => {
+    if (searchParams.error) {
+      setMessage(searchParams.error);
+    } else if (searchParams.message) {
+      setMessage(searchParams.message);
+    }
+  }, [searchParams.error, searchParams.message]);
 
   const handleGoogleClick = async () => {
     setMessage('');
     void Haptics.selectionAsync();
+    setGoogleLoading(true);
 
-    const clientId = await getEffectiveGoogleClientId();
-    if (clientId) {
-      setGoogleLoading(true);
-      try {
-        const oauthResult = await startGoogleOAuthFlow({ intent: 'sign-in' });
-        if (oauthResult?.token) {
-          const res = await loginWithGoogle({
-            email: '',
-            token: oauthResult.token,
-            intent: 'sign-in',
-          });
-          if (!res.success) {
-            setMessage(res.error || 'Google authentication failed.');
-          }
-          return;
-        } else if (oauthResult?.error && oauthResult.error !== 'dismissed') {
-          setMessage(oauthResult.error);
-          return;
-        }
-      } catch {
-        // Fall back to interactive account chooser
-      } finally {
+    try {
+      const result = await initiateGoogleOAuth({ intent: 'sign-in' });
+      if (result.error) {
+        setMessage(result.error);
         setGoogleLoading(false);
       }
+    } catch (err: any) {
+      setMessage(err?.message || 'Could not initiate Google sign-in.');
+      setGoogleLoading(false);
     }
-
-    setShowGoogleModal(true);
-  };
-
-  const handleSelectGoogleAccount = async (account: GoogleProfilePayload) => {
-    setMessage('');
-    const result = await loginWithGoogle({
-      email: account.email,
-      name: account.name,
-      picture: account.picture,
-      googleId: account.googleId,
-      intent: 'sign-in',
-    });
-
-    if (!result.success) {
-      setMessage(result.error || 'Could not sign in with Google. Please try again.');
-      throw new Error(result.error);
-    }
-    setShowGoogleModal(false);
   };
 
   const submit = async () => {
@@ -403,15 +373,6 @@ function SignInSection({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }) {
         testID="signin-google-btn"
       />
 
-      <GoogleAccountModal
-        visible={showGoogleModal}
-        intent="sign-in"
-        onClose={() => setShowGoogleModal(false)}
-        onSelectAccount={handleSelectGoogleAccount}
-        onOAuthSuccess={async (token) => {
-          await loginWithGoogle({ email: '', token, intent: 'sign-in' });
-        }}
-      />
 
       {/* ── Quick Demo Evaluation Access ── */}
       <View style={styles.demoBlock}>
@@ -473,61 +434,34 @@ function SignUpSection({ onSwitchToSignIn }: { onSwitchToSignIn: () => void }) {
   const [message, setMessage] = useState('');
   const [sendingCode, setSendingCode] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [showGoogleModal, setShowGoogleModal] = useState(false);
+  const searchParams = useLocalSearchParams<{ error?: string; message?: string }>();
+
+  useEffect(() => {
+    if (searchParams.error) {
+      setMessage(searchParams.error);
+    } else if (searchParams.message) {
+      setMessage(searchParams.message);
+    }
+  }, [searchParams.error, searchParams.message]);
 
   const handleGoogleClick = async () => {
     setMessage('');
     void Haptics.selectionAsync();
+    setGoogleLoading(true);
 
-    const clientId = await getEffectiveGoogleClientId();
-    if (clientId) {
-      setGoogleLoading(true);
-      try {
-        const oauthResult = await startGoogleOAuthFlow({
-          intent: 'sign-up',
-          role: selectedRole,
-        });
-        if (oauthResult?.token) {
-          const res = await loginWithGoogle({
-            email: '',
-            token: oauthResult.token,
-            role: selectedRole,
-            intent: 'sign-up',
-          });
-          if (!res.success) {
-            setMessage(res.error || 'Google account creation failed.');
-          }
-          return;
-        } else if (oauthResult?.error && oauthResult.error !== 'dismissed') {
-          setMessage(oauthResult.error);
-          return;
-        }
-      } catch {
-        // Fall back to account chooser
-      } finally {
+    try {
+      const result = await initiateGoogleOAuth({
+        intent: 'sign-up',
+        role: selectedRole,
+      });
+      if (result.error) {
+        setMessage(result.error);
         setGoogleLoading(false);
       }
+    } catch (err: any) {
+      setMessage(err?.message || 'Could not initiate Google sign-up.');
+      setGoogleLoading(false);
     }
-
-    setShowGoogleModal(true);
-  };
-
-  const handleSelectGoogleAccount = async (account: GoogleProfilePayload) => {
-    setMessage('');
-    const result = await loginWithGoogle({
-      email: account.email,
-      name: account.name,
-      picture: account.picture,
-      googleId: account.googleId,
-      role: selectedRole,
-      intent: 'sign-up',
-    });
-
-    if (!result.success) {
-      setMessage(result.error || 'Could not create account with Google. Please try again.');
-      throw new Error(result.error);
-    }
-    setShowGoogleModal(false);
   };
 
   const strength = getPasswordStrength(password);
@@ -763,21 +697,6 @@ function SignUpSection({ onSwitchToSignIn }: { onSwitchToSignIn: () => void }) {
         testID="signup-google-btn"
       />
 
-      <GoogleAccountModal
-        visible={showGoogleModal}
-        intent="sign-up"
-        selectedRole={selectedRole}
-        onClose={() => setShowGoogleModal(false)}
-        onSelectAccount={handleSelectGoogleAccount}
-        onOAuthSuccess={async (token) => {
-          await loginWithGoogle({
-            email: '',
-            token,
-            role: selectedRole,
-            intent: 'sign-up',
-          });
-        }}
-      />
 
       <View style={styles.switchRow}>
         <Text style={[styles.switchText, { color: colors.mutedForeground }]}>Already have an account?</Text>

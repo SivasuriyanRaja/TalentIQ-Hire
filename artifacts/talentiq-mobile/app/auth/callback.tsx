@@ -1,73 +1,129 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleIcon } from '@/components/GoogleIcon';
 import { useColors } from '@/hooks/useColors';
 import { useTalentIQ } from '@/state/TalentIQContext';
+import {
+  validateOAuthState,
+  getGoogleOAuthRedirectUri,
+  OAUTH_VERIFIER_KEY,
+} from '@/lib/googleAuth';
 
 WebBrowser.maybeCompleteAuthSession();
 
 export default function GoogleAuthCallbackScreen() {
   const colors = useColors();
   const router = useRouter();
-  const params = useLocalSearchParams();
-  const { loginWithGoogle } = useTalentIQ();
+  const params = useLocalSearchParams<{
+    code?: string;
+    state?: string;
+    token?: string;
+    error?: string;
+    error_description?: string;
+  }>();
+  const { loginWithGoogle, loginWithSessionToken } = useTalentIQ();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [statusText, setStatusText] = useState('Verifying with Google identity services...');
 
   useEffect(() => {
+    let isMounted = true;
+
     async function processAuth() {
       try {
-        let token: string | null = null;
-
-        // 1. Check local search params from router
-        if (typeof params.access_token === 'string') {
-          token = params.access_token;
-        } else if (typeof params.id_token === 'string') {
-          token = params.id_token;
+        // 1. Check if user or Google reported an error (e.g. access_denied)
+        if (params.error) {
+          const description =
+            params.error === 'access_denied'
+              ? 'Google sign-in was cancelled.'
+              : params.error_description || params.error;
+          if (isMounted) setErrorMsg(description);
+          return;
         }
 
-        // 2. On Web, parse window.location hash fragment (#access_token=...)
-        if (!token && Platform.OS === 'web' && typeof window !== 'undefined') {
-          const hash = window.location.hash;
-          if (hash && hash.length > 1) {
-            const hashParams = new URLSearchParams(hash.substring(1));
-            token = hashParams.get('access_token') || hashParams.get('id_token');
+        // 2. Case A: Backend redirected with issued session token
+        if (params.token && typeof params.token === 'string') {
+          if (isMounted) setStatusText('Finalizing your TalentIQ session...');
+          const token = params.token.trim();
+
+          const result = await loginWithSessionToken(token);
+          if (!result.success) {
+            throw new Error(result.error || 'Could not establish session from authorization token.');
           }
-        }
-
-        if (!token) {
-          setErrorMsg('No Google authentication token was received from the redirect.');
           return;
         }
 
-        // 3. Authenticate with TalentIQ backend
-        const result = await loginWithGoogle({
-          email: '',
-          token,
-          intent: 'sign-in',
-        });
+        // 3. Case B: Authorization code returned directly to frontend
+        const code =
+          typeof params.code === 'string'
+            ? params.code
+            : Platform.OS === 'web' && typeof window !== 'undefined'
+              ? new URLSearchParams(window.location.search).get('code')
+              : null;
 
-        if (!result.success) {
-          setErrorMsg(result.error || 'Failed to complete Google sign-in.');
+        const stateParam =
+          typeof params.state === 'string'
+            ? params.state
+            : Platform.OS === 'web' && typeof window !== 'undefined'
+              ? new URLSearchParams(window.location.search).get('state')
+              : null;
+
+        if (code) {
+          if (isMounted) setStatusText('Exchanging authorization code with secure server...');
+
+          // Validate CSRF state parameter
+          const stateValidation = await validateOAuthState(stateParam || '');
+          if (!stateValidation.valid) {
+            throw new Error('OAuth security state check failed. Possible CSRF or expired session.');
+          }
+
+          // Retrieve PKCE code_verifier
+          let verifier = stateValidation.verifier || '';
+          if (!verifier) {
+            verifier =
+              (Platform.OS === 'web' && typeof sessionStorage !== 'undefined'
+                ? sessionStorage.getItem(OAUTH_VERIFIER_KEY)
+                : null) || (await AsyncStorage.getItem(OAUTH_VERIFIER_KEY)) || '';
+          }
+
+          // Exchange code on backend at /api/auth/google/callback
+          const result = await loginWithGoogle({
+            code,
+            code_verifier: verifier,
+            state: stateParam || undefined,
+            redirect_uri: getGoogleOAuthRedirectUri(),
+            role: stateValidation.role || 'candidate',
+            intent: stateValidation.intent || 'sign-in',
+          });
+
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to complete Google authentication on server.');
+          }
           return;
         }
 
-        // Success - navigate into main application
-        router.replace('/(tabs)');
+        throw new Error('No authorization code or session token received from Google OAuth.');
       } catch (err: any) {
-        setErrorMsg(err?.message || 'Unexpected error completing Google authentication.');
+        if (isMounted) {
+          setErrorMsg(err?.message || 'Unexpected error completing Google authentication.');
+        }
       }
     }
 
     void processAuth();
-  }, [params, loginWithGoogle, router]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [params, router, loginWithGoogle, loginWithSessionToken]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={styles.iconCircle}>
-          <GoogleIcon size={32} />
+          <GoogleIcon size={34} />
         </View>
 
         {errorMsg ? (
@@ -78,21 +134,23 @@ export default function GoogleAuthCallbackScreen() {
             <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
               {errorMsg}
             </Text>
-            <Text
+            <Pressable
               onPress={() => router.replace('/(auth)/sign-in')}
-              style={[styles.link, { color: colors.primary }]}
+              style={[styles.returnButton, { backgroundColor: colors.primary }]}
             >
-              Return to Sign In
-            </Text>
+              <Text style={[styles.returnButtonText, { color: colors.primaryForeground }]}>
+                Return to Sign In
+              </Text>
+            </Pressable>
           </>
         ) : (
           <>
             <ActivityIndicator size="large" color={colors.primary} style={styles.spinner} />
             <Text style={[styles.title, { color: colors.foreground }]}>
-              Connecting your Google Account
+              Connecting to Google Identity
             </Text>
             <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-              Verifying credentials with TalentIQ AI...
+              {statusText}
             </Text>
           </>
         )}
@@ -110,38 +168,49 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '100%',
-    maxWidth: 420,
+    maxWidth: 440,
     borderRadius: 24,
     borderWidth: 1,
-    padding: 32,
+    padding: 36,
     alignItems: 'center',
-    gap: 12,
+    gap: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
   },
   iconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   spinner: {
-    marginVertical: 8,
+    marginVertical: 12,
   },
   title: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 18,
+    fontSize: 19,
     textAlign: 'center',
   },
   subtitle: {
     fontFamily: 'Inter_400Regular',
-    fontSize: 13,
+    fontSize: 13.5,
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 20,
+    maxWidth: 340,
   },
-  link: {
+  returnButton: {
+    marginTop: 14,
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  returnButtonText: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: 14,
-    marginTop: 12,
   },
 });

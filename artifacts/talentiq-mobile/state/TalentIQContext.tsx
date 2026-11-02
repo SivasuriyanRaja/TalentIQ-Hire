@@ -143,14 +143,19 @@ export interface TalentIQContextValue extends TalentIQState {
     password: string;
   }) => Promise<{ success: boolean; error?: string }>;
   loginWithGoogle: (params: {
-    email: string;
+    code?: string;
+    code_verifier?: string;
+    state?: string;
+    redirect_uri?: string;
+    token?: string;
+    email?: string;
     name?: string;
     picture?: string;
     googleId?: string;
     role?: UserRole;
     intent?: 'sign-in' | 'sign-up';
-    token?: string;
   }) => Promise<{ success: boolean; isNewUser?: boolean; error?: string }>;
+  loginWithSessionToken: (token: string) => Promise<{ success: boolean; error?: string }>;
   loginDemo: (role: 'candidate' | 'recruiter') => Promise<void>;
   loginGuest: (role?: UserRole) => Promise<void>;
   logout: () => Promise<void>;
@@ -566,35 +571,47 @@ export function TalentIQProvider({
 
   const loginWithGoogle = useCallback(
     async ({
+      code,
+      code_verifier,
+      state,
+      redirect_uri,
+      token,
       email,
       name,
       picture,
       googleId,
       role = 'candidate',
       intent = 'sign-in',
-      token,
     }: {
-      email: string;
+      code?: string;
+      code_verifier?: string;
+      state?: string;
+      redirect_uri?: string;
+      token?: string;
+      email?: string;
       name?: string;
       picture?: string;
       googleId?: string;
       role?: UserRole;
       intent?: 'sign-in' | 'sign-up';
-      token?: string;
     }): Promise<{ success: boolean; isNewUser?: boolean; error?: string }> => {
       try {
-        const endpoint = getApiEndpoint('/auth/google');
+        const endpoint = getApiEndpoint('/auth/google/callback');
         const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            code,
+            code_verifier,
+            state,
+            redirect_uri,
+            token,
             email,
             name,
             picture,
             googleId,
             role,
             intent,
-            token,
           }),
         });
         const data = await res.json();
@@ -648,6 +665,54 @@ export function TalentIQProvider({
             err?.message ||
             'Network error connecting to TalentIQ server. Please try again.',
         };
+      }
+    },
+    [router],
+  );
+
+  const loginWithSessionToken = useCallback(
+    async (token: string): Promise<{ success: boolean; error?: string }> => {
+      try {
+        const endpoint = getApiEndpoint('/auth/me');
+        const res = await fetch(endpoint, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success || !data.user) {
+          return { success: false, error: data.error || 'Failed to authenticate session.' };
+        }
+
+        const loggedUser: AuthUser = {
+          id: data.user.id || data.user.userId,
+          email: data.user.email,
+          name: data.user.name,
+          role: (data.user.role as UserRole) || 'candidate',
+          avatarUrl: data.user.avatarUrl,
+          authProvider: data.user.authProvider || 'google',
+          isDemo: false,
+        };
+
+        setAuthUser(loggedUser);
+        setAuthMode('authenticated');
+        setState((current) => ({
+          ...current,
+          role: loggedUser.role,
+          profile: {
+            ...current.profile,
+            name: loggedUser.name || current.profile.name,
+          },
+        }));
+
+        await Promise.all([
+          AsyncStorage.setItem('talentiq.auth.session', JSON.stringify(loggedUser)),
+          AsyncStorage.setItem('talentiq.auth.mode', 'authenticated'),
+          AsyncStorage.setItem('talentiq.auth.token', token),
+        ]);
+
+        router.replace('/(tabs)');
+        return { success: true };
+      } catch (err: any) {
+        return { success: false, error: err?.message || 'Failed to authenticate session.' };
       }
     },
     [router],
@@ -923,6 +988,7 @@ export function TalentIQProvider({
       registerWithCredentials,
       loginWithCredentials,
       loginWithGoogle,
+      loginWithSessionToken,
       loginDemo,
       loginGuest,
       logout,
@@ -950,6 +1016,7 @@ export function TalentIQProvider({
       registerWithCredentials,
       loginWithCredentials,
       loginWithGoogle,
+      loginWithSessionToken,
       loginDemo,
       loginGuest,
       logout,
