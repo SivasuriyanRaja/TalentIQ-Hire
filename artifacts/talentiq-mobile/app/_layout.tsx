@@ -78,13 +78,15 @@ function RootLayoutNav() {
       rootSegment === 'assessment' ||
       rootSegment === 'ai-insights';
 
-    // If not authenticated, CANNOT access protected routes on launch -> redirect to welcome screen
-    if ((!isUserSignedIn || authMode !== 'authenticated') && inProtected) {
+    const canAccess = isUserSignedIn || authMode === 'authenticated' || authMode === 'guest';
+
+    // If not authenticated, cannot access protected routes -> redirect to welcome screen
+    if (!canAccess && inProtected) {
       router.replace('/');
     }
 
     // If authenticated and on (auth) modals, send to dashboard
-    if (isUserSignedIn && authMode === 'authenticated' && inAuthGroup) {
+    if (canAccess && inAuthGroup) {
       router.replace('/(tabs)');
     }
   }, [isUserSignedIn, authMode, contextLoaded, segments, router]);

@@ -11,12 +11,18 @@ export default function WelcomeScreen() {
   const { isUserSignedIn, isLoaded, authMode } = useTalentIQ();
   const router = useRouter();
 
-  // Prevent hardware back button from popping back into signed-in routes or previous screens
+  // Prevent accidental hardware back button exit; require double-press within 2s to exit
   useFocusEffect(
     useCallback(() => {
       if (Platform.OS !== 'android') return;
+      let lastBackPress = 0;
       const onBackPress = () => {
-        BackHandler.exitApp();
+        const now = Date.now();
+        if (now - lastBackPress < 2000) {
+          BackHandler.exitApp();
+          return true;
+        }
+        lastBackPress = now;
         return true;
       };
       const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);

@@ -7,6 +7,7 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   interpolate,
+  interpolateColor,
   useSharedValue,
 } from 'react-native-reanimated';
 import { useColors } from '@/hooks/useColors';
@@ -37,10 +38,13 @@ function AnimatedTabIcon({
 
   const pillStyle = useAnimatedStyle(() => {
     const paddingH = interpolate(progress.value, [0, 1], [0, 14]);
-    const bgOpacity = interpolate(progress.value, [0, 1], [0, 1]);
     return {
       paddingHorizontal: paddingH,
-      backgroundColor: `rgba(${hexToRgb(colors.accent)}, ${bgOpacity})`,
+      backgroundColor: interpolateColor(
+        progress.value,
+        [0, 1],
+        ['transparent', colors.accent],
+      ),
     };
   });
 

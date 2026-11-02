@@ -32,13 +32,19 @@ export default function HomeScreen() {
     authUser,
   } = useTalentIQ();
 
-  // On the root home tab, pressing Android hardware back exits the app
-  // rather than popping back into the login/welcome screens
+  // On the root home tab, pressing Android hardware back exits only on double-press
+  // to prevent accidental closing during route transitions / modal dismissals
   useFocusEffect(
     useCallback(() => {
       if (Platform.OS !== 'android') return;
+      let lastBackPress = 0;
       const onBackPress = () => {
-        BackHandler.exitApp();
+        const now = Date.now();
+        if (now - lastBackPress < 2000) {
+          BackHandler.exitApp();
+          return true;
+        }
+        lastBackPress = now;
         return true;
       };
       const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
