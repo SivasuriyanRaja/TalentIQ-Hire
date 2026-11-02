@@ -1,41 +1,20 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "services": {
-    "api-server": {
-      "root": "artifacts/api-server",
-      "framework": "express",
-      "bindings": [
-        {
-          "type": "service",
-          "service": "mockup-sandbox",
-          "format": "url",
-          "env": "FRONTEND_URL"
-        }
-      ]
-    },
-    "mockup-sandbox": {
-      "root": "artifacts/mockup-sandbox",
-      "framework": "vite"
-    }
-  },
+  "version": 2,
+  "buildCommand": "pnpm run build:web",
+  "outputDirectory": "artifacts/talentiq-mobile/dist",
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": {
-        "service": "api-server"
-      }
+      "destination": "https://talentiq-hire.onrender.com/api/$1"
     },
     {
       "source": "/auth/(.*)",
-      "destination": {
-        "service": "api-server"
-      }
+      "destination": "https://talentiq-hire.onrender.com/auth/$1"
     },
     {
       "source": "/(.*)",
-      "destination": {
-        "service": "mockup-sandbox"
-      }
+      "destination": "/index.html"
     }
   ]
 }
