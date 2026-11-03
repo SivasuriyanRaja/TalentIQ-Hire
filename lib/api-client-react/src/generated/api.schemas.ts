@@ -13,29 +13,123 @@ export interface ApiError {
   error: string;
 }
 
-export interface MatchAnalysisRequest {
-  candidateName: string;
-  /**
-     * @minimum 0
-     * @maximum 60
-     */
-  yearsExperience: number;
-  candidateSkills: string[];
-  jobTitle: string;
-  company: string;
-  description: string;
-  requiredSkills: string[];
+export interface ApiMessage {
+  message: string;
 }
 
-export interface MatchAnalysisResponse {
-  /**
-     * @minimum 0
-     * @maximum 100
-     */
-  matchScore: number;
-  strengths: string[];
-  missingSkills: string[];
-  recommendation: string;
+export type JobEmploymentType = typeof JobEmploymentType[keyof typeof JobEmploymentType];
+
+
+export const JobEmploymentType = {
+  'Full-time': 'Full-time',
+  'Part-time': 'Part-time',
+  Contract: 'Contract',
+  Internship: 'Internship',
+  Remote: 'Remote',
+} as const;
+
+export type JobStatus = typeof JobStatus[keyof typeof JobStatus];
+
+
+export const JobStatus = {
+  Draft: 'Draft',
+  Open: 'Open',
+  Closed: 'Closed',
+} as const;
+
+export interface Job {
+  id?: string;
+  title: string;
+  company: string;
+  description: string;
+  requiredSkills?: string[];
+  location?: string;
+  salaryRange?: string;
+  employmentType?: JobEmploymentType;
+  postedBy: string;
+  status?: JobStatus;
+  applicantsCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type JobCreateRequestEmploymentType = typeof JobCreateRequestEmploymentType[keyof typeof JobCreateRequestEmploymentType];
+
+
+export const JobCreateRequestEmploymentType = {
+  'Full-time': 'Full-time',
+  'Part-time': 'Part-time',
+  Contract: 'Contract',
+  Internship: 'Internship',
+  Remote: 'Remote',
+} as const;
+
+export interface JobCreateRequest {
+  /** @maxLength 160 */
+  title: string;
+  /** @maxLength 160 */
+  company: string;
+  /** @maxLength 6000 */
+  description: string;
+  /** @items.maxLength 100 */
+  requiredSkills?: string[];
+  /** @maxLength 200 */
+  location?: string;
+  /** @maxLength 100 */
+  salaryRange?: string;
+  employmentType?: JobCreateRequestEmploymentType;
+}
+
+export type JobUpdateRequestEmploymentType = typeof JobUpdateRequestEmploymentType[keyof typeof JobUpdateRequestEmploymentType];
+
+
+export const JobUpdateRequestEmploymentType = {
+  'Full-time': 'Full-time',
+  'Part-time': 'Part-time',
+  Contract: 'Contract',
+  Internship: 'Internship',
+  Remote: 'Remote',
+} as const;
+
+export type JobUpdateRequestStatus = typeof JobUpdateRequestStatus[keyof typeof JobUpdateRequestStatus];
+
+
+export const JobUpdateRequestStatus = {
+  Draft: 'Draft',
+  Open: 'Open',
+  Closed: 'Closed',
+} as const;
+
+export interface JobUpdateRequest {
+  /** @maxLength 160 */
+  title?: string;
+  /** @maxLength 160 */
+  company?: string;
+  /** @maxLength 6000 */
+  description?: string;
+  /** @items.maxLength 100 */
+  requiredSkills?: string[];
+  /** @maxLength 200 */
+  location?: string;
+  /** @maxLength 100 */
+  salaryRange?: string;
+  employmentType?: JobUpdateRequestEmploymentType;
+  status?: JobUpdateRequestStatus;
+}
+
+export type ApplicationStatus = typeof ApplicationStatus[keyof typeof ApplicationStatus];
+
+
+export const ApplicationStatus = {
+  Applied: 'Applied',
+  Shortlisted: 'Shortlisted',
+  Interview: 'Interview',
+  Offer: 'Offer',
+  Hired: 'Hired',
+  Rejected: 'Rejected',
+} as const;
+
+export interface MatchBreakdown {
   /**
      * @minimum 0
      * @maximum 100
@@ -51,47 +145,388 @@ export interface MatchAnalysisResponse {
      * @maximum 100
      */
   roleFit: number;
+  strengths: string[];
+  missingSkills: string[];
+  recommendation: string;
 }
 
-export type AssessmentGenerationRequestAssessmentType = typeof AssessmentGenerationRequestAssessmentType[keyof typeof AssessmentGenerationRequestAssessmentType];
+export type StatusHistoryEntryStatus = typeof StatusHistoryEntryStatus[keyof typeof StatusHistoryEntryStatus];
 
 
-export const AssessmentGenerationRequestAssessmentType = {
-  MCQ: 'MCQ',
-  APTITUDE: 'APTITUDE',
+export const StatusHistoryEntryStatus = {
+  Applied: 'Applied',
+  Shortlisted: 'Shortlisted',
+  Interview: 'Interview',
+  Offer: 'Offer',
+  Hired: 'Hired',
+  Rejected: 'Rejected',
 } as const;
 
-export interface AssessmentGenerationRequest {
-  jobTitle: string;
-  requiredSkills: string[];
-  assessmentType: AssessmentGenerationRequestAssessmentType;
-  /**
-     * @minimum 3
-     * @maximum 10
-     */
-  questionCount: number;
+export interface StatusHistoryEntry {
+  status: StatusHistoryEntryStatus;
+  changedBy: string;
+  at: string;
+  /** @maxLength 600 */
+  note?: string;
 }
 
-export type AssessmentQuestionDifficulty = typeof AssessmentQuestionDifficulty[keyof typeof AssessmentQuestionDifficulty];
+export interface Application {
+  id?: string;
+  jobId: string;
+  jobTitle: string;
+  company: string;
+  recruiterId: string;
+  applicantUserId: string;
+  applicantName: string;
+  applicantHeadline?: string;
+  status: ApplicationStatus;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  matchScore?: number;
+  matchBreakdown?: MatchBreakdown;
+  assessmentAttemptId?: string;
+  statusHistory?: StatusHistoryEntry[];
+  appliedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ApplicationCreateRequest {
+  jobId: string;
+}
+
+export interface ApplicationCreatedResponse {
+  application: Application;
+}
+
+export type StageUpdateRequestStatus = typeof StageUpdateRequestStatus[keyof typeof StageUpdateRequestStatus];
 
 
-export const AssessmentQuestionDifficulty = {
+export const StageUpdateRequestStatus = {
+  Applied: 'Applied',
+  Shortlisted: 'Shortlisted',
+  Interview: 'Interview',
+  Offer: 'Offer',
+  Hired: 'Hired',
+  Rejected: 'Rejected',
+} as const;
+
+export interface StageUpdateRequest {
+  status: StageUpdateRequestStatus;
+  /** @maxLength 600 */
+  note?: string;
+}
+
+export interface ApplicationUpdatedResponse {
+  application: Application;
+}
+
+export interface AssessmentAttemptEvent {
+  type: string;
+  at: string;
+}
+
+export interface AssessmentAttempt {
+  id?: string;
+  userId: string;
+  jobId: string;
+  assessmentId: string;
+  score: number;
+  total: number;
+  focusLosses?: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  integrityScore: number;
+  flagged: boolean;
+  events?: AssessmentAttemptEvent[];
+  startedAt?: string;
+  completedAt?: string;
+  createdAt?: string;
+}
+
+export interface ResumeMetadata {
+  hasFile: boolean;
+  fileName?: string;
+  sizeBytes?: number;
+  mime?: string;
+}
+
+export interface ApplicationDetailResponse {
+  application?: Application;
+  attempt?: AssessmentAttempt;
+  resume?: ResumeMetadata;
+}
+
+export interface PaginatedJobsResponse {
+  jobs: Job[];
+  page: number;
+  limit: number;
+  total: number;
+}
+
+export interface PaginatedApplicationsResponse {
+  applications: Application[];
+  page: number;
+  limit: number;
+  total: number;
+  hasMore: boolean;
+}
+
+export interface RecruiterStatsResponse {
+  openRoles: number;
+  totalApplicants: number;
+  shortlisted: number;
+  interviews: number;
+  offers: number;
+  hires: number;
+  rejected: number;
+  avgMatch: number;
+  flaggedAttempts: number;
+}
+
+export type AssessmentQuestionClientDifficulty = typeof AssessmentQuestionClientDifficulty[keyof typeof AssessmentQuestionClientDifficulty];
+
+
+export const AssessmentQuestionClientDifficulty = {
   Easy: 'Easy',
   Medium: 'Medium',
   Hard: 'Hard',
 } as const;
 
-export interface AssessmentQuestion {
+export interface AssessmentQuestionClient {
+  id: number;
   prompt: string;
   options: string[];
-  correctAnswer: string;
   explanation: string;
-  difficulty: AssessmentQuestionDifficulty;
+  difficulty: AssessmentQuestionClientDifficulty;
 }
 
 export interface AssessmentGenerationResponse {
+  id: string;
   title: string;
   durationMinutes: number;
-  questions: AssessmentQuestion[];
+  questions: AssessmentQuestionClient[];
 }
+
+export type AssessmentGenerateRequestAssessmentType = typeof AssessmentGenerateRequestAssessmentType[keyof typeof AssessmentGenerateRequestAssessmentType];
+
+
+export const AssessmentGenerateRequestAssessmentType = {
+  MCQ: 'MCQ',
+  APTITUDE: 'APTITUDE',
+} as const;
+
+export interface AssessmentGenerateRequest {
+  jobId: string;
+  assessmentType?: AssessmentGenerateRequestAssessmentType;
+  /**
+     * @minimum 3
+     * @maximum 10
+     */
+  questionCount?: number;
+}
+
+export type AssessmentSubmitRequestAnswers = {[key: string]: string};
+
+export interface AssessmentSubmitRequest {
+  answers: AssessmentSubmitRequestAnswers;
+  /** @minimum 0 */
+  focusLosses?: number;
+  events?: AssessmentAttemptEvent[];
+  /** @minimum 0 */
+  timeSpentSeconds?: number;
+  identityPledgeSigned?: boolean;
+}
+
+export type AssessmentSubmitResponseSkillsBreakdownItem = { [key: string]: unknown };
+
+export interface AssessmentSubmitResponse {
+  id?: string;
+  score: number;
+  total: number;
+  percentage: number;
+  readinessRating?: string;
+  integrityStatus?: string;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  integrityScore: number;
+  flagged: boolean;
+  proxyRiskScore?: number;
+  proxyRiskLevel?: string;
+  feedback?: string;
+  strengths?: string[];
+  growthAreas?: string[];
+  skillsBreakdown?: AssessmentSubmitResponseSkillsBreakdownItem[];
+  completedAt?: string;
+}
+
+export type UserProfileRole = typeof UserProfileRole[keyof typeof UserProfileRole];
+
+
+export const UserProfileRole = {
+  candidate: 'candidate',
+  recruiter: 'recruiter',
+} as const;
+
+export interface UserProfile {
+  userId: string;
+  role: UserProfileRole;
+  companyName?: string;
+  name: string;
+  headline?: string;
+  location?: string;
+  yearsExperience?: number;
+  skills?: string[];
+  education?: string;
+  resumeLink?: string;
+  resumeFileKey?: string;
+  resumeFileName?: string;
+  resumeFileMime?: string;
+  resumeFileSizeBytes?: number;
+  extractedSkills?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ProfileUpdateRequest {
+  name?: string;
+  headline?: string;
+  location?: string;
+  yearsExperience?: number;
+  skills?: string[];
+  education?: string;
+  resumeLink?: string;
+}
+
+export type RoleUpdateRequestRole = typeof RoleUpdateRequestRole[keyof typeof RoleUpdateRequestRole];
+
+
+export const RoleUpdateRequestRole = {
+  candidate: 'candidate',
+  recruiter: 'recruiter',
+} as const;
+
+export interface RoleUpdateRequest {
+  role: RoleUpdateRequestRole;
+  companyName?: string;
+}
+
+export interface RoleUpdateResponse {
+  message: string;
+  role: string;
+}
+
+export interface ResumeUploadResponse {
+  message: string;
+  resumeFileName?: string;
+  resumeFileSizeBytes?: number;
+  extractedSkills?: string[];
+}
+
+export interface SyncApplication {
+  id?: string;
+  jobId: string;
+  jobTitle: string;
+  company: string;
+  status: string;
+  matchScore?: number;
+  appliedAt?: string;
+}
+
+export type SyncApplicationCreateStatus = typeof SyncApplicationCreateStatus[keyof typeof SyncApplicationCreateStatus];
+
+
+export const SyncApplicationCreateStatus = {
+  Applied: 'Applied',
+  Shortlisted: 'Shortlisted',
+  Interview: 'Interview',
+  Offer: 'Offer',
+  Hired: 'Hired',
+  Rejected: 'Rejected',
+} as const;
+
+export interface SyncApplicationCreate {
+  jobId: string;
+  jobTitle: string;
+  company: string;
+  status?: SyncApplicationCreateStatus;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  matchScore?: number;
+  appliedAt?: string;
+}
+
+export type ListMyJobsParams = {
+status?: ListMyJobsStatus;
+};
+
+export type ListMyJobsStatus = typeof ListMyJobsStatus[keyof typeof ListMyJobsStatus];
+
+
+export const ListMyJobsStatus = {
+  Draft: 'Draft',
+  Open: 'Open',
+  Closed: 'Closed',
+} as const;
+
+export type ListPublicJobsParams = {
+q?: string;
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+};
+
+export type ListRecruiterApplicationsParams = {
+jobId?: string;
+status?: ListRecruiterApplicationsStatus;
+sort?: ListRecruiterApplicationsSort;
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+};
+
+export type ListRecruiterApplicationsStatus = typeof ListRecruiterApplicationsStatus[keyof typeof ListRecruiterApplicationsStatus];
+
+
+export const ListRecruiterApplicationsStatus = {
+  Applied: 'Applied',
+  Shortlisted: 'Shortlisted',
+  Interview: 'Interview',
+  Offer: 'Offer',
+  Hired: 'Hired',
+  Rejected: 'Rejected',
+} as const;
+
+export type ListRecruiterApplicationsSort = typeof ListRecruiterApplicationsSort[keyof typeof ListRecruiterApplicationsSort];
+
+
+export const ListRecruiterApplicationsSort = {
+  matchScore: 'matchScore',
+  integrity: 'integrity',
+  date: 'date',
+} as const;
+
+export type UploadResumeBody = {
+  resume: Blob | File;
+};
 

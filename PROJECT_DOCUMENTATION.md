@@ -752,3 +752,123 @@ npx expo start
 
 ### Conclusion
 TalentIQ AI delivers a modern paradigm for technical recruiting. By uniting AI-driven semantic match analysis, automated dynamic assessments, and native anti-cheating mobile proctoring in an offline-first architecture, TalentIQ drastically reduces hiring latency while boosting candidate placement precision.
+
+---
+
+## 13. Production Backend (Recruiter-to-Candidate, real-time flow)
+
+The Recruiter (HR) side was converted from a demo (hard-coded `sampleCandidates`, local-only `candidateStatuses`/`customJobs`) into a real, server-backed, multi-user flow. The candidate and recruiter now share a **single source of truth**: the `Application` model, with recruiter stage changes pushed to candidates in near-real time via SSE.
+
+### 13.1 Architecture diagram (text)
+
+```text
+  Recruiter (HR)                              Candidate
+  --------                                    --------
+  POST /api/recruiter/jobs        Job posted  \
+  GET  /api/jobs                  ------------>  Sees open jobs
+                                                |
+                                                |  POST /api/applications  (resume + match)
+                                                |  ----------------------------->
+  GET  /api/recruiter/applications  <-----------  Application appears (server)
+  PATCH .../:id/stage             Stage move   |
+  -------------------------------->            |
+                                               |  SSE: application.stage_changed
+                                               |  <-----------------------------  sees new stage
+  GET /api/recruiter/applications/:id/resume   |
+  <-------------------------------------------   (owner recruiter only)
+
+Server: Express 5 + Mongoose + MongoDB + SSE hub (per-user channels)
+Auth: Clerk + requireRole('recruiter'|'candidate'), ownership enforced on every query.
+```
+
+### 13.2 Data model (single source of truth)
+
+- **Job**: `title, company, description, requiredSkills[], location, salaryRange, employmentType, postedBy (Clerk userId), status (Draft|Open|Closed), applicantsCount`; indexes on `postedBy` + `status`.
+- **Application** (replaces `CloudApplication` + `RecruiterStageUpdate`): `jobId, jobTitle, company, recruiterId, applicantUserId, applicantName, applicantHeadline, status (Applied→Shortlisted→Interview→Offer→Hired|Rejected), matchScore, matchBreakdown, assessmentAttemptId, statusHistory[{status, changedBy, at, note}], appliedAt`. Unique index `(applicantUserId, jobId)`; index `(recruiterId, status)`.
+- **Assessment**: questions + `correctAnswer` persisted server-side (never sent to client), bound to optional `jobId`.
+- **AssessmentAttempt**: `userId, jobId, assessmentId, score, total, focusLosses, integrityScore, flagged, events[], startedAt, completedAt`. `integrityScore = max(0, 100 - 20 * focusLosses)`; `flagged` when `focusLosses >= 3`.
+- **UserProfile**: added `role ("candidate"|"recruiter")`, `companyName`, `resumeFileKey/Name/Mime/SizeBytes`, `extractedSkills[]`.
+- `RecruiterStageUpdate` removed; history migrated into `Application.statusHistory` via `scripts/src/migrate-stage-updates.ts`.
+
+### 13.3 Endpoint table
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| `POST` | `/api/recruiter/jobs` | recruiter | Create a job |
+| `GET` | `/api/recruiter/jobs` | recruiter | List own jobs (`?status`) |
+| `PUT/DELETE` | `/api/recruiter/jobs/:id` | recruiter (owner) | Close/reopen/delete a job |
+| `GET` | `/api/jobs` | public | Open jobs, search + pagination |
+| `POST` | `/api/applications` | candidate | Apply; server match snapshot; 409 on duplicate |
+| `GET` | `/api/recruiter/applications` | recruiter | Paginated apps for my jobs (`?jobId&status&sort&page`) |
+| `GET` | `/api/recruiter/applications/:id` | recruiter (owner) | Detail: match, attempt, integrity, resume metadata |
+| `PATCH` | `/api/recruiter/applications/:id/stage` | recruiter (owner) | Validated transition + history + note; SSE push |
+| `GET` | `/api/recruiter/applications/:id/resume` | recruiter (owner) | Stream resume file |
+| `GET` | `/api/recruiter/stats` | recruiter | DB aggregations (roles, applicants, shortlisted, avgMatch, flagged) |
+| `POST/GET` | `/api/assessments/generate` | candidate | Persist assessment; client gets questions without answers |
+| `POST` | `/api/assessments/:id/submit` | candidate | Server grading + integrity; stores attempt |
+| `POST` | `/api/sync/role` | any | Persist role to `UserProfile.role` |
+| `GET/PUT` | `/api/sync/profile` | any | Cloud profile |
+| `POST/GET` | `/api/sync/profile/resume` | any | Resume upload/download (PDF/DOCX/TXT, ≤5 MB, magic-byte validated) |
+| `GET` | `/api/events` | any (auth) | SSE: `application.created` / `application.stage_changed` |
+| `GET` | `/api/healthz` | public | Health + DB check |
+
+### 13.4 Environment variables
+
+Create `artifacts/api-server/.env`:
+
+```env
+PORT=5000
+NODE_ENV=development
+BASE_URL=http://localhost:5000
+
+MONGODB_URI=mongodb+srv://<user>:<pass>@cluster.mongodb.net/talentiq?appName=Cluster0
+
+CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+
+OPENAI_API_KEY=sk-...
+
+# Dev-only auth fallback. Hard-fails in production unless both are set:
+ALLOW_DEV_AUTH=true   # only honored when NODE_ENV=development
+
+# CORS allowlist (comma-separated)
+CORS_ALLOWLIST=http://localhost:8081,https://talentiq-hire.onrender.com
+
+RESUME_UPLOAD_DIR=uploads/resumes
+```
+
+### 13.5 Run guide
+
+```powershell
+# 1. Install all dependencies across the monorepo
+pnpm install
+
+# 2. (Optional) seed demo data: 2 recruiters, 5 candidates, 4 jobs, applications
+pnpm seed
+
+# 3. Start the API server
+pnpm --filter @workspace/api-server run dev
+
+# 4. Start the mobile client (Expo)
+pnpm --filter @workspace/talentiq-mobile run dev
+
+# 5. Typecheck + unit tests across the monorepo
+pnpm run typecheck
+pnpm --filter @workspace/api-server run test:unit
+```
+
+### 13.6 Demo credentials (from `pnpm seed`)
+
+All accounts share password `TalentIQ@2026`:
+- Recruiter 1: `recruiter.one@talentiq.ai` (TalentIQ Hiring Co)
+- Recruiter 2: `recruiter.two@talentiq.ai` (Nexus Talent)
+- Candidates: `jordan.lee@talentiq.ai`, `rohan.sharma@talentiq.ai`, `priya.patel@talentiq.ai`, `ananya.verma@talentiq.ai`, `samuel.kim@talentiq.ai`
+
+### 13.7 Verified end-to-end flow
+
+1. Recruiter posts a job (`POST /api/recruiter/jobs`) → appears in public `GET /api/jobs`.
+2. Candidate views the job, uploads a resume (PDF/DOCX/TXT), skills extracted server-side.
+3. Candidate applies (`POST /api/applications`) → server computes & stores the AI match snapshot; 409 on duplicate.
+4. Recruiter sees the applicant live in `GET /api/recruiter/applications` (real-time via SSE `application.created`).
+5. Recruiter reviews score + integrity + resume, then moves the stage (`PATCH .../:id/stage`).
+6. Candidate sees the stage update live (`application.stage_changed` via SSE) in their Applications tab.

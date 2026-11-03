@@ -12,6 +12,14 @@ tags:
     description: Health operations
   - name: talentiq
     description: AI hiring intelligence
+  - name: recruiter
+    description: Recruiter (HR) operations
+  - name: candidate
+    description: Candidate operations
+  - name: sync
+    description: Cloud sync (profile, resume, role)
+  - name: events
+    description: Server-Sent Events stream
 paths:
   /healthz:
     get:
@@ -26,66 +34,556 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
-  /talentiq/match-analysis:
+
+  # ─── Recruiter Job CRUD ───────────────────────────────────────────────
+  /recruiter/jobs:
     post:
-      operationId: analyzeTalentMatch
-      tags: [talentiq]
-      summary: Analyze candidate fit for a role
+      operationId: createJob
+      tags: [recruiter]
+      summary: Create a job posting
+      security: [{ bearerAuth: [] }]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/MatchAnalysisRequest"
+              $ref: "#/components/schemas/JobCreateRequest"
       responses:
-        "200":
-          description: Candidate match analysis
+        "201":
+          description: Job created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MatchAnalysisResponse"
+                $ref: "#/components/schemas/Job"
         "400":
-          description: Invalid match request
+          description: Invalid request
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
-        "503":
-          description: AI service unavailable
+        "401":
+          description: Unauthorized
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
-  /talentiq/assessments/generate:
-    post:
-      operationId: generateTalentAssessment
-      tags: [talentiq]
-      summary: Generate a role-specific multiple-choice assessment
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    get:
+      operationId: listMyJobs
+      tags: [recruiter]
+      summary: List the authenticated recruiter's jobs
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [Draft, Open, Closed]
+      responses:
+        "200":
+          description: Jobs list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Job"
+
+  /recruiter/jobs/{id}:
+    put:
+      operationId: updateJob
+      tags: [recruiter]
+      summary: Update a job (owner only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AssessmentGenerationRequest"
+              $ref: "#/components/schemas/JobUpdateRequest"
       responses:
         "200":
-          description: Generated assessment
+          description: Job updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "404":
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    delete:
+      operationId: deleteJob
+      tags: [recruiter]
+      summary: Delete a job (owner only, no applications)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Job deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "409":
+          description: Cannot delete job with applications
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  # ─── Public jobs list ─────────────────────────────────────────────────
+  /jobs:
+    get:
+      operationId: listPublicJobs
+      tags: [talentiq]
+      summary: List open public jobs with search and pagination
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Paginated open jobs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedJobsResponse"
+
+  # ─── Candidate applies ────────────────────────────────────────────────
+  /applications:
+    post:
+      operationId: createApplication
+      tags: [candidate]
+      summary: Candidate applies to a job (server-computed match snapshot)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplicationCreateRequest"
+      responses:
+        "201":
+          description: Application created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationCreatedResponse"
+        "409":
+          description: Duplicate application
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  # ─── Recruiter application list ───────────────────────────────────────
+  /recruiter/applications:
+    get:
+      operationId: listRecruiterApplications
+      tags: [recruiter]
+      summary: Paginated applications for the recruiter's jobs
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: jobId
+          schema:
+            type: string
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [Applied, Shortlisted, Interview, Offer, Hired, Rejected]
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum: [matchScore, integrity, date]
+            default: date
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Paginated applications
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedApplicationsResponse"
+
+  # ─── Recruiter application detail ─────────────────────────────────────
+  /recruiter/applications/{id}:
+    get:
+      operationId: getRecruiterApplication
+      tags: [recruiter]
+      summary: Get application detail with attempt, integrity, resume metadata
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Application detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationDetailResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  # ─── Stage transition ─────────────────────────────────────────────────
+  /recruiter/applications/{id}/stage:
+    patch:
+      operationId: updateApplicationStage
+      tags: [recruiter]
+      summary: Move application stage (validated transitions + history)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StageUpdateRequest"
+      responses:
+        "200":
+          description: Stage updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationUpdatedResponse"
+        "400":
+          description: Invalid transition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  # ─── Resume download (recruiter-owned jobs only) ──────────────────────
+  /recruiter/applications/{id}/resume:
+    get:
+      operationId: downloadRecruiterApplicationResume
+      tags: [recruiter]
+      summary: Stream the applicant's resume (owner recruiter only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Resume file stream
+          content:
+            application/octet-stream: {}
+            application/pdf: {}
+        "404":
+          description: Resume not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  # ─── Recruiter stats ──────────────────────────────────────────────────
+  /recruiter/stats:
+    get:
+      operationId: getRecruiterStats
+      tags: [recruiter]
+      summary: Aggregated recruiter metrics
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Recruiter stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecruiterStatsResponse"
+
+  # ─── Assessments (server-persisted, bound to a job) ───────────────────
+  /assessments/generate:
+    post:
+      operationId: generateAssessment
+      tags: [candidate]
+      summary: Generate an assessment bound to a job (questions without answers)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssessmentGenerateRequest"
+      responses:
+        "200":
+          description: Generated assessment (client-safe, no correctAnswer)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/AssessmentGenerationResponse"
-        "400":
-          description: Invalid assessment request
+        "404":
+          description: Job not found
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
-        "503":
-          description: AI service unavailable
+
+  /assessments/{id}:
+    get:
+      operationId: getAssessment
+      tags: [candidate]
+      summary: Get an assessment (questions without correctAnswer)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Assessment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssessmentGenerationResponse"
+        "404":
+          description: Not found
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+
+  /assessments/{id}/submit:
+    post:
+      operationId: submitAssessment
+      tags: [candidate]
+      summary: Submit assessment answers; server grades and stores attempt
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssessmentSubmitRequest"
+      responses:
+        "200":
+          description: Assessment result (server-graded)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssessmentSubmitResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  # ─── Events (SSE) ─────────────────────────────────────────────────────
+  /events:
+    get:
+      operationId: sseEvents
+      tags: [events]
+      summary: Server-Sent Events stream (auth required)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: SSE event stream
+          content:
+            text/event-stream: {}
+
+  # ─── Sync: role ───────────────────────────────────────────────────────
+  /sync/role:
+    post:
+      operationId: setRole
+      tags: [sync]
+      summary: Persist the user's role (candidate | recruiter) to the server
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleUpdateRequest"
+      responses:
+        "200":
+          description: Role saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleUpdateResponse"
+
+  # ─── Sync: profile ────────────────────────────────────────────────────
+  /sync/profile:
+    get:
+      operationId: getProfile
+      tags: [sync]
+      summary: Get the cloud-synced user profile
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "404":
+          description: No profile yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    put:
+      operationId: updateProfile
+      tags: [sync]
+      summary: Update fields on the cloud-synced profile
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileUpdateRequest"
+      responses:
+        "200":
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+
+  # ─── Sync: resume ─────────────────────────────────────────────────────
+  /sync/profile/resume:
+    post:
+      operationId: uploadResume
+      tags: [sync]
+      summary: Upload a resume (PDF, DOCX, TXT; max 5 MB) and extract skills
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                resume:
+                  type: string
+                  format: binary
+              required:
+                - resume
+      responses:
+        "200":
+          description: Resume uploaded and skills extracted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResumeUploadResponse"
+    get:
+      operationId: downloadResume
+      tags: [sync]
+      summary: Download the authenticated user's resume file
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Resume file
+          content:
+            application/octet-stream: {}
+
+  # ─── Sync: applications (legacy sink, candidate-owned) ────────────────
+  /sync/applications:
+    get:
+      operationId: listSyncApplications
+      tags: [sync]
+      summary: List the authenticated candidate's applications
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Applications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SyncApplication"
+    post:
+      operationId: upsertSyncApplication
+      tags: [sync]
+      summary: Upsert a candidate application record
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SyncApplicationCreate"
+      responses:
+        "200":
+          description: Application upserted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncApplication"
+
 components:
   schemas:
     HealthStatus:
@@ -102,20 +600,21 @@ components:
           type: string
       required:
         - error
-    MatchAnalysisRequest:
+    ApiMessage:
       type: object
       properties:
-        candidateName:
+        message:
           type: string
-        yearsExperience:
-          type: integer
-          minimum: 0
-          maximum: 60
-        candidateSkills:
-          type: array
-          items:
-            type: string
-        jobTitle:
+      required:
+        - message
+
+    # ─── Job ────────────────────────────────────────────────────────────
+    Job:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
           type: string
         company:
           type: string
@@ -125,18 +624,177 @@ components:
           type: array
           items:
             type: string
+        location:
+          type: string
+        salaryRange:
+          type: string
+        employmentType:
+          type: string
+          enum: [Full-time, Part-time, Contract, Internship, Remote]
+        postedBy:
+          type: string
+        status:
+          type: string
+          enum: [Draft, Open, Closed]
+        applicantsCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
       required:
-        - candidateName
-        - yearsExperience
-        - candidateSkills
-        - jobTitle
+        - title
         - company
         - description
-        - requiredSkills
-    MatchAnalysisResponse:
+        - postedBy
+
+    JobCreateRequest:
       type: object
       properties:
+        title:
+          type: string
+          maxLength: 160
+        company:
+          type: string
+          maxLength: 160
+        description:
+          type: string
+          maxLength: 6000
+        requiredSkills:
+          type: array
+          items:
+            type: string
+            maxLength: 100
+        location:
+          type: string
+          maxLength: 200
+        salaryRange:
+          type: string
+          maxLength: 100
+        employmentType:
+          type: string
+          enum: [Full-time, Part-time, Contract, Internship, Remote]
+      required:
+        - title
+        - company
+        - description
+
+    JobUpdateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 160
+        company:
+          type: string
+          maxLength: 160
+        description:
+          type: string
+          maxLength: 6000
+        requiredSkills:
+          type: array
+          items:
+            type: string
+            maxLength: 100
+        location:
+          type: string
+          maxLength: 200
+        salaryRange:
+          type: string
+          maxLength: 100
+        employmentType:
+          type: string
+          enum: [Full-time, Part-time, Contract, Internship, Remote]
+        status:
+          type: string
+          enum: [Draft, Open, Closed]
+
+    # ─── Application ────────────────────────────────────────────────────
+    Application:
+      type: object
+      properties:
+        id:
+          type: string
+        jobId:
+          type: string
+        jobTitle:
+          type: string
+        company:
+          type: string
+        recruiterId:
+          type: string
+        applicantUserId:
+          type: string
+        applicantName:
+          type: string
+        applicantHeadline:
+          type: string
+        status:
+          type: string
+          enum: [Applied, Shortlisted, Interview, Offer, Hired, Rejected]
         matchScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+        matchBreakdown:
+          $ref: "#/components/schemas/MatchBreakdown"
+        assessmentAttemptId:
+          type: string
+        statusHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatusHistoryEntry"
+        appliedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - jobId
+        - jobTitle
+        - company
+        - recruiterId
+        - applicantUserId
+        - applicantName
+        - status
+
+    StatusHistoryEntry:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [Applied, Shortlisted, Interview, Offer, Hired, Rejected]
+        changedBy:
+          type: string
+        at:
+          type: string
+          format: date-time
+        note:
+          type: string
+          maxLength: 600
+      required:
+        - status
+        - changedBy
+        - at
+
+    MatchBreakdown:
+      type: object
+      properties:
+        skillMatch:
+          type: integer
+          minimum: 0
+          maximum: 100
+        experienceMatch:
+          type: integer
+          minimum: 0
+          maximum: 100
+        roleFit:
           type: integer
           minimum: 0
           maximum: 100
@@ -150,35 +808,252 @@ components:
             type: string
         recommendation:
           type: string
-        skillMatch:
-          type: integer
-          minimum: 0
-          maximum: 100
-        experienceMatch:
-          type: integer
-          minimum: 0
-          maximum: 100
-        roleFit:
-          type: integer
-          minimum: 0
-          maximum: 100
       required:
-        - matchScore
-        - strengths
-        - missingSkills
-        - recommendation
         - skillMatch
         - experienceMatch
         - roleFit
-    AssessmentGenerationRequest:
+        - strengths
+        - missingSkills
+        - recommendation
+
+    ApplicationCreateRequest:
       type: object
       properties:
-        jobTitle:
+        jobId:
           type: string
-        requiredSkills:
+      required:
+        - jobId
+
+    ApplicationCreatedResponse:
+      type: object
+      properties:
+        application:
+          $ref: "#/components/schemas/Application"
+      required:
+        - application
+
+    StageUpdateRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [Applied, Shortlisted, Interview, Offer, Hired, Rejected]
+        note:
+          type: string
+          maxLength: 600
+      required:
+        - status
+
+    ApplicationUpdatedResponse:
+      type: object
+      properties:
+        application:
+          $ref: "#/components/schemas/Application"
+      required:
+        - application
+
+    ApplicationDetailResponse:
+      type: object
+      properties:
+        application:
+          $ref: "#/components/schemas/Application"
+        attempt:
+          $ref: "#/components/schemas/AssessmentAttempt"
+        resume:
+          $ref: "#/components/schemas/ResumeMetadata"
+
+    AssessmentAttempt:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        jobId:
+          type: string
+        assessmentId:
+          type: string
+        score:
+          type: integer
+        total:
+          type: integer
+        focusLosses:
+          type: integer
+        integrityScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+        flagged:
+          type: boolean
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssessmentAttemptEvent"
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - userId
+        - jobId
+        - assessmentId
+        - score
+        - total
+        - integrityScore
+        - flagged
+
+    AssessmentAttemptEvent:
+      type: object
+      properties:
+        type:
+          type: string
+        at:
+          type: string
+          format: date-time
+      required:
+        - type
+        - at
+
+    ResumeMetadata:
+      type: object
+      properties:
+        hasFile:
+          type: boolean
+        fileName:
+          type: string
+        sizeBytes:
+          type: integer
+        mime:
+          type: string
+      required:
+        - hasFile
+
+    PaginatedJobsResponse:
+      type: object
+      properties:
+        jobs:
+          type: array
+          items:
+            $ref: "#/components/schemas/Job"
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+      required:
+        - jobs
+        - page
+        - limit
+        - total
+
+    PaginatedApplicationsResponse:
+      type: object
+      properties:
+        applications:
+          type: array
+          items:
+            $ref: "#/components/schemas/Application"
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        hasMore:
+          type: boolean
+      required:
+        - applications
+        - page
+        - limit
+        - total
+        - hasMore
+
+    RecruiterStatsResponse:
+      type: object
+      properties:
+        openRoles:
+          type: integer
+        totalApplicants:
+          type: integer
+        shortlisted:
+          type: integer
+        interviews:
+          type: integer
+        offers:
+          type: integer
+        hires:
+          type: integer
+        rejected:
+          type: integer
+        avgMatch:
+          type: integer
+        flaggedAttempts:
+          type: integer
+      required:
+        - openRoles
+        - totalApplicants
+        - shortlisted
+        - interviews
+        - offers
+        - hires
+        - rejected
+        - avgMatch
+        - flaggedAttempts
+
+    # ─── Assessment ─────────────────────────────────────────────────────
+    AssessmentQuestionClient:
+      type: object
+      properties:
+        id:
+          type: integer
+        prompt:
+          type: string
+        options:
           type: array
           items:
             type: string
+        explanation:
+          type: string
+        difficulty:
+          type: string
+          enum: [Easy, Medium, Hard]
+      required:
+        - id
+        - prompt
+        - options
+        - explanation
+        - difficulty
+
+    AssessmentGenerationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        durationMinutes:
+          type: integer
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssessmentQuestionClient"
+      required:
+        - id
+        - title
+        - durationMinutes
+        - questions
+
+    AssessmentGenerateRequest:
+      type: object
+      properties:
+        jobId:
+          type: string
         assessmentType:
           type: string
           enum: [MCQ, APTITUDE]
@@ -187,45 +1062,237 @@ components:
           minimum: 3
           maximum: 10
       required:
-        - jobTitle
-        - requiredSkills
-        - assessmentType
-        - questionCount
-    AssessmentQuestion:
+        - jobId
+
+    AssessmentSubmitRequest:
       type: object
       properties:
-        prompt:
+        answers:
+          type: object
+          additionalProperties:
+            type: string
+        focusLosses:
+          type: integer
+          minimum: 0
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssessmentAttemptEvent"
+        timeSpentSeconds:
+          type: integer
+          minimum: 0
+        identityPledgeSigned:
+          type: boolean
+      required:
+        - answers
+
+    AssessmentSubmitResponse:
+      type: object
+      properties:
+        id:
           type: string
-        options:
+        score:
+          type: integer
+        total:
+          type: integer
+        percentage:
+          type: integer
+        readinessRating:
+          type: string
+        integrityStatus:
+          type: string
+        integrityScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+        flagged:
+          type: boolean
+        proxyRiskScore:
+          type: integer
+        proxyRiskLevel:
+          type: string
+        feedback:
+          type: string
+        strengths:
           type: array
           items:
             type: string
-        correctAnswer:
-          type: string
-        explanation:
-          type: string
-        difficulty:
-          type: string
-          enum: [Easy, Medium, Hard]
-      required:
-        - prompt
-        - options
-        - correctAnswer
-        - explanation
-        - difficulty
-    AssessmentGenerationResponse:
-      type: object
-      properties:
-        title:
-          type: string
-        durationMinutes:
-          type: integer
-        questions:
+        growthAreas:
           type: array
           items:
-            $ref: "#/components/schemas/AssessmentQuestion"
+            type: string
+        skillsBreakdown:
+          type: array
+          items:
+            type: object
+        completedAt:
+          type: string
+          format: date-time
       required:
-        - title
-        - durationMinutes
-        - questions
+        - score
+        - total
+        - percentage
+        - integrityScore
+        - flagged
 
+    # ─── Profile / Role / Resume ────────────────────────────────────────
+    UserProfile:
+      type: object
+      properties:
+        userId:
+          type: string
+        role:
+          type: string
+          enum: [candidate, recruiter]
+        companyName:
+          type: string
+        name:
+          type: string
+        headline:
+          type: string
+        location:
+          type: string
+        yearsExperience:
+          type: integer
+        skills:
+          type: array
+          items:
+            type: string
+        education:
+          type: string
+        resumeLink:
+          type: string
+        resumeFileKey:
+          type: string
+        resumeFileName:
+          type: string
+        resumeFileMime:
+          type: string
+        resumeFileSizeBytes:
+          type: integer
+        extractedSkills:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - userId
+        - role
+        - name
+
+    ProfileUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        headline:
+          type: string
+        location:
+          type: string
+        yearsExperience:
+          type: integer
+        skills:
+          type: array
+          items:
+            type: string
+        education:
+          type: string
+        resumeLink:
+          type: string
+
+    RoleUpdateRequest:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [candidate, recruiter]
+        companyName:
+          type: string
+      required:
+        - role
+
+    RoleUpdateResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        role:
+          type: string
+      required:
+        - message
+        - role
+
+    ResumeUploadResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        resumeFileName:
+          type: string
+        resumeFileSizeBytes:
+          type: integer
+        extractedSkills:
+          type: array
+          items:
+            type: string
+      required:
+        - message
+
+    SyncApplication:
+      type: object
+      properties:
+        id:
+          type: string
+        jobId:
+          type: string
+        jobTitle:
+          type: string
+        company:
+          type: string
+        status:
+          type: string
+        matchScore:
+          type: integer
+        appliedAt:
+          type: string
+          format: date-time
+      required:
+        - jobId
+        - jobTitle
+        - company
+        - status
+
+    SyncApplicationCreate:
+      type: object
+      properties:
+        jobId:
+          type: string
+        jobTitle:
+          type: string
+        company:
+          type: string
+        status:
+          type: string
+          enum: [Applied, Shortlisted, Interview, Offer, Hired, Rejected]
+        matchScore:
+          type: number
+          minimum: 0
+          maximum: 100
+        appliedAt:
+          type: string
+          format: date-time
+      required:
+        - jobId
+        - jobTitle
+        - company
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

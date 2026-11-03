@@ -5,10 +5,11 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { AssessmentQuestion } from './assessmentQuestion';
+import type { AssessmentQuestionClient } from './assessmentQuestionClient';
 
 export interface AssessmentGenerationResponse {
+  id: string;
   title: string;
   durationMinutes: number;
-  questions: AssessmentQuestion[];
+  questions: AssessmentQuestionClient[];
 }

@@ -6,15 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface MatchAnalysisResponse {
-  /**
-     * @minimum 0
-     * @maximum 100
-     */
-  matchScore: number;
-  strengths: string[];
-  missingSkills: string[];
-  recommendation: string;
+export interface MatchBreakdown {
   /**
      * @minimum 0
      * @maximum 100
@@ -30,4 +22,7 @@ export interface MatchAnalysisResponse {
      * @maximum 100
      */
   roleFit: number;
+  strengths: string[];
+  missingSkills: string[];
+  recommendation: string;
 }

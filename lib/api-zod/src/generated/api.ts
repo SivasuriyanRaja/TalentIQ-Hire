@@ -18,73 +18,717 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
- * @summary Analyze candidate fit for a role
+ * @summary Create a job posting
  */
-export const analyzeTalentMatchBodyYearsExperienceMin = 0;
-export const analyzeTalentMatchBodyYearsExperienceMax = 60;
+export const createJobBodyTitleMax = 160;
+
+export const createJobBodyCompanyMax = 160;
+
+export const createJobBodyDescriptionMax = 6000;
+
+export const createJobBodyRequiredSkillsItemMax = 100;
+
+export const createJobBodyLocationMax = 200;
+
+export const createJobBodySalaryRangeMax = 100;
 
 
 
-export const AnalyzeTalentMatchBody = zod.object({
-  "candidateName": zod.string(),
-  "yearsExperience": zod.number().int().min(analyzeTalentMatchBodyYearsExperienceMin).max(analyzeTalentMatchBodyYearsExperienceMax),
-  "candidateSkills": zod.array(zod.string()),
-  "jobTitle": zod.string(),
-  "company": zod.string(),
-  "description": zod.string(),
-  "requiredSkills": zod.array(zod.string())
+export const CreateJobBody = zod.object({
+  "title": zod.string().max(createJobBodyTitleMax),
+  "company": zod.string().max(createJobBodyCompanyMax),
+  "description": zod.string().max(createJobBodyDescriptionMax),
+  "requiredSkills": zod.array(zod.string().max(createJobBodyRequiredSkillsItemMax)).optional(),
+  "location": zod.string().max(createJobBodyLocationMax).optional(),
+  "salaryRange": zod.string().max(createJobBodySalaryRangeMax).optional(),
+  "employmentType": zod.enum(['Full-time', 'Part-time', 'Contract', 'Internship', 'Remote']).optional()
 })
 
-export const analyzeTalentMatchResponseMatchScoreMin = 0;
-export const analyzeTalentMatchResponseMatchScoreMax = 100;
-
-export const analyzeTalentMatchResponseSkillMatchMin = 0;
-export const analyzeTalentMatchResponseSkillMatchMax = 100;
-
-export const analyzeTalentMatchResponseExperienceMatchMin = 0;
-export const analyzeTalentMatchResponseExperienceMatchMax = 100;
-
-export const analyzeTalentMatchResponseRoleFitMin = 0;
-export const analyzeTalentMatchResponseRoleFitMax = 100;
-
-
-
-export const AnalyzeTalentMatchResponse = zod.object({
-  "matchScore": zod.number().int().min(analyzeTalentMatchResponseMatchScoreMin).max(analyzeTalentMatchResponseMatchScoreMax),
-  "strengths": zod.array(zod.string()),
-  "missingSkills": zod.array(zod.string()),
-  "recommendation": zod.string(),
-  "skillMatch": zod.number().int().min(analyzeTalentMatchResponseSkillMatchMin).max(analyzeTalentMatchResponseSkillMatchMax),
-  "experienceMatch": zod.number().int().min(analyzeTalentMatchResponseExperienceMatchMin).max(analyzeTalentMatchResponseExperienceMatchMax),
-  "roleFit": zod.number().int().min(analyzeTalentMatchResponseRoleFitMin).max(analyzeTalentMatchResponseRoleFitMax)
+export const CreateJobResponse = zod.object({
+  "id": zod.string().optional(),
+  "title": zod.string(),
+  "company": zod.string(),
+  "description": zod.string(),
+  "requiredSkills": zod.array(zod.string()).optional(),
+  "location": zod.string().optional(),
+  "salaryRange": zod.string().optional(),
+  "employmentType": zod.enum(['Full-time', 'Part-time', 'Contract', 'Internship', 'Remote']).optional(),
+  "postedBy": zod.string(),
+  "status": zod.enum(['Draft', 'Open', 'Closed']).optional(),
+  "applicantsCount": zod.number().int().optional(),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional()
 })
 
 
 /**
- * @summary Generate a role-specific multiple-choice assessment
+ * @summary List the authenticated recruiter's jobs
  */
-export const generateTalentAssessmentBodyQuestionCountMin = 3;
-export const generateTalentAssessmentBodyQuestionCountMax = 10;
-
-
-
-export const GenerateTalentAssessmentBody = zod.object({
-  "jobTitle": zod.string(),
-  "requiredSkills": zod.array(zod.string()),
-  "assessmentType": zod.enum(['MCQ', 'APTITUDE']),
-  "questionCount": zod.number().int().min(generateTalentAssessmentBodyQuestionCountMin).max(generateTalentAssessmentBodyQuestionCountMax)
+export const ListMyJobsQueryParams = zod.object({
+  "status": zod.enum(['Draft', 'Open', 'Closed']).optional()
 })
 
-export const GenerateTalentAssessmentResponse = zod.object({
+export const ListMyJobsResponseItem = zod.object({
+  "id": zod.string().optional(),
+  "title": zod.string(),
+  "company": zod.string(),
+  "description": zod.string(),
+  "requiredSkills": zod.array(zod.string()).optional(),
+  "location": zod.string().optional(),
+  "salaryRange": zod.string().optional(),
+  "employmentType": zod.enum(['Full-time', 'Part-time', 'Contract', 'Internship', 'Remote']).optional(),
+  "postedBy": zod.string(),
+  "status": zod.enum(['Draft', 'Open', 'Closed']).optional(),
+  "applicantsCount": zod.number().int().optional(),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional()
+})
+export const ListMyJobsResponse = zod.array(ListMyJobsResponseItem)
+
+
+/**
+ * @summary Update a job (owner only)
+ */
+export const UpdateJobParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const updateJobBodyTitleMax = 160;
+
+export const updateJobBodyCompanyMax = 160;
+
+export const updateJobBodyDescriptionMax = 6000;
+
+export const updateJobBodyRequiredSkillsItemMax = 100;
+
+export const updateJobBodyLocationMax = 200;
+
+export const updateJobBodySalaryRangeMax = 100;
+
+
+
+export const UpdateJobBody = zod.object({
+  "title": zod.string().max(updateJobBodyTitleMax).optional(),
+  "company": zod.string().max(updateJobBodyCompanyMax).optional(),
+  "description": zod.string().max(updateJobBodyDescriptionMax).optional(),
+  "requiredSkills": zod.array(zod.string().max(updateJobBodyRequiredSkillsItemMax)).optional(),
+  "location": zod.string().max(updateJobBodyLocationMax).optional(),
+  "salaryRange": zod.string().max(updateJobBodySalaryRangeMax).optional(),
+  "employmentType": zod.enum(['Full-time', 'Part-time', 'Contract', 'Internship', 'Remote']).optional(),
+  "status": zod.enum(['Draft', 'Open', 'Closed']).optional()
+})
+
+export const UpdateJobResponse = zod.object({
+  "id": zod.string().optional(),
+  "title": zod.string(),
+  "company": zod.string(),
+  "description": zod.string(),
+  "requiredSkills": zod.array(zod.string()).optional(),
+  "location": zod.string().optional(),
+  "salaryRange": zod.string().optional(),
+  "employmentType": zod.enum(['Full-time', 'Part-time', 'Contract', 'Internship', 'Remote']).optional(),
+  "postedBy": zod.string(),
+  "status": zod.enum(['Draft', 'Open', 'Closed']).optional(),
+  "applicantsCount": zod.number().int().optional(),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional()
+})
+
+
+/**
+ * @summary Delete a job (owner only, no applications)
+ */
+export const DeleteJobParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const DeleteJobResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary List open public jobs with search and pagination
+ */
+export const listPublicJobsQueryPageDefault = 1;
+
+export const listPublicJobsQueryLimitDefault = 20;
+export const listPublicJobsQueryLimitMax = 100;
+
+
+
+export const ListPublicJobsQueryParams = zod.object({
+  "q": zod.coerce.string().optional(),
+  "page": zod.coerce.number().int().min(1).default(listPublicJobsQueryPageDefault),
+  "limit": zod.coerce.number().int().min(1).max(listPublicJobsQueryLimitMax).default(listPublicJobsQueryLimitDefault)
+})
+
+export const ListPublicJobsResponse = zod.object({
+  "jobs": zod.array(zod.object({
+  "id": zod.string().optional(),
+  "title": zod.string(),
+  "company": zod.string(),
+  "description": zod.string(),
+  "requiredSkills": zod.array(zod.string()).optional(),
+  "location": zod.string().optional(),
+  "salaryRange": zod.string().optional(),
+  "employmentType": zod.enum(['Full-time', 'Part-time', 'Contract', 'Internship', 'Remote']).optional(),
+  "postedBy": zod.string(),
+  "status": zod.enum(['Draft', 'Open', 'Closed']).optional(),
+  "applicantsCount": zod.number().int().optional(),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional()
+})),
+  "page": zod.number().int(),
+  "limit": zod.number().int(),
+  "total": zod.number().int()
+})
+
+
+/**
+ * @summary Candidate applies to a job (server-computed match snapshot)
+ */
+export const CreateApplicationBody = zod.object({
+  "jobId": zod.string()
+})
+
+export const createApplicationResponseApplicationMatchScoreMin = 0;
+export const createApplicationResponseApplicationMatchScoreMax = 100;
+
+export const createApplicationResponseApplicationMatchBreakdownSkillMatchMin = 0;
+export const createApplicationResponseApplicationMatchBreakdownSkillMatchMax = 100;
+
+export const createApplicationResponseApplicationMatchBreakdownExperienceMatchMin = 0;
+export const createApplicationResponseApplicationMatchBreakdownExperienceMatchMax = 100;
+
+export const createApplicationResponseApplicationMatchBreakdownRoleFitMin = 0;
+export const createApplicationResponseApplicationMatchBreakdownRoleFitMax = 100;
+
+export const createApplicationResponseApplicationStatusHistoryItemNoteMax = 600;
+
+
+
+export const CreateApplicationResponse = zod.object({
+  "application": zod.object({
+  "id": zod.string().optional(),
+  "jobId": zod.string(),
+  "jobTitle": zod.string(),
+  "company": zod.string(),
+  "recruiterId": zod.string(),
+  "applicantUserId": zod.string(),
+  "applicantName": zod.string(),
+  "applicantHeadline": zod.string().optional(),
+  "status": zod.enum(['Applied', 'Shortlisted', 'Interview', 'Offer', 'Hired', 'Rejected']),
+  "matchScore": zod.number().int().min(createApplicationResponseApplicationMatchScoreMin).max(createApplicationResponseApplicationMatchScoreMax).optional(),
+  "matchBreakdown": zod.object({
+  "skillMatch": zod.number().int().min(createApplicationResponseApplicationMatchBreakdownSkillMatchMin).max(createApplicationResponseApplicationMatchBreakdownSkillMatchMax),
+  "experienceMatch": zod.number().int().min(createApplicationResponseApplicationMatchBreakdownExperienceMatchMin).max(createApplicationResponseApplicationMatchBreakdownExperienceMatchMax),
+  "roleFit": zod.number().int().min(createApplicationResponseApplicationMatchBreakdownRoleFitMin).max(createApplicationResponseApplicationMatchBreakdownRoleFitMax),
+  "strengths": zod.array(zod.string()),
+  "missingSkills": zod.array(zod.string()),
+  "recommendation": zod.string()
+}).optional(),
+  "assessmentAttemptId": zod.string().optional(),
+  "statusHistory": zod.array(zod.object({
+  "status": zod.enum(['Applied', 'Shortlisted', 'Interview', 'Offer', 'Hired', 'Rejected']),
+  "changedBy": zod.string(),
+  "at": zod.coerce.date(),
+  "note": zod.string().max(createApplicationResponseApplicationStatusHistoryItemNoteMax).optional()
+})).optional(),
+  "appliedAt": zod.coerce.date().optional(),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional()
+})
+})
+
+
+/**
+ * @summary Paginated applications for the recruiter's jobs
+ */
+export const listRecruiterApplicationsQuerySortDefault = `date`;
+export const listRecruiterApplicationsQueryPageDefault = 1;
+
+export const listRecruiterApplicationsQueryLimitDefault = 20;
+export const listRecruiterApplicationsQueryLimitMax = 100;
+
+
+
+export const ListRecruiterApplicationsQueryParams = zod.object({
+  "jobId": zod.coerce.string().optional(),
+  "status": zod.enum(['Applied', 'Shortlisted', 'Interview', 'Offer', 'Hired', 'Rejected']).optional(),
+  "sort": zod.enum(['matchScore', 'integrity', 'date']).default(listRecruiterApplicationsQuerySortDefault),
+  "page": zod.coerce.number().int().min(1).default(listRecruiterApplicationsQueryPageDefault),
+  "limit": zod.coerce.number().int().min(1).max(listRecruiterApplicationsQueryLimitMax).default(listRecruiterApplicationsQueryLimitDefault)
+})
+
+export const listRecruiterApplicationsResponseApplicationsItemMatchScoreMin = 0;
+export const listRecruiterApplicationsResponseApplicationsItemMatchScoreMax = 100;
+
+export const listRecruiterApplicationsResponseApplicationsItemMatchBreakdownSkillMatchMin = 0;
+export const listRecruiterApplicationsResponseApplicationsItemMatchBreakdownSkillMatchMax = 100;
+
+export const listRecruiterApplicationsResponseApplicationsItemMatchBreakdownExperienceMatchMin = 0;
+export const listRecruiterApplicationsResponseApplicationsItemMatchBreakdownExperienceMatchMax = 100;
+
+export const listRecruiterApplicationsResponseApplicationsItemMatchBreakdownRoleFitMin = 0;
+export const listRecruiterApplicationsResponseApplicationsItemMatchBreakdownRoleFitMax = 100;
+
+export const listRecruiterApplicationsResponseApplicationsItemStatusHistoryItemNoteMax = 600;
+
+
+
+export const ListRecruiterApplicationsResponse = zod.object({
+  "applications": zod.array(zod.object({
+  "id": zod.string().optional(),
+  "jobId": zod.string(),
+  "jobTitle": zod.string(),
+  "company": zod.string(),
+  "recruiterId": zod.string(),
+  "applicantUserId": zod.string(),
+  "applicantName": zod.string(),
+  "applicantHeadline": zod.string().optional(),
+  "status": zod.enum(['Applied', 'Shortlisted', 'Interview', 'Offer', 'Hired', 'Rejected']),
+  "matchScore": zod.number().int().min(listRecruiterApplicationsResponseApplicationsItemMatchScoreMin).max(listRecruiterApplicationsResponseApplicationsItemMatchScoreMax).optional(),
+  "matchBreakdown": zod.object({
+  "skillMatch": zod.number().int().min(listRecruiterApplicationsResponseApplicationsItemMatchBreakdownSkillMatchMin).max(listRecruiterApplicationsResponseApplicationsItemMatchBreakdownSkillMatchMax),
+  "experienceMatch": zod.number().int().min(listRecruiterApplicationsResponseApplicationsItemMatchBreakdownExperienceMatchMin).max(listRecruiterApplicationsResponseApplicationsItemMatchBreakdownExperienceMatchMax),
+  "roleFit": zod.number().int().min(listRecruiterApplicationsResponseApplicationsItemMatchBreakdownRoleFitMin).max(listRecruiterApplicationsResponseApplicationsItemMatchBreakdownRoleFitMax),
+  "strengths": zod.array(zod.string()),
+  "missingSkills": zod.array(zod.string()),
+  "recommendation": zod.string()
+}).optional(),
+  "assessmentAttemptId": zod.string().optional(),
+  "statusHistory": zod.array(zod.object({
+  "status": zod.enum(['Applied', 'Shortlisted', 'Interview', 'Offer', 'Hired', 'Rejected']),
+  "changedBy": zod.string(),
+  "at": zod.coerce.date(),
+  "note": zod.string().max(listRecruiterApplicationsResponseApplicationsItemStatusHistoryItemNoteMax).optional()
+})).optional(),
+  "appliedAt": zod.coerce.date().optional(),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional()
+})),
+  "page": zod.number().int(),
+  "limit": zod.number().int(),
+  "total": zod.number().int(),
+  "hasMore": zod.boolean()
+})
+
+
+/**
+ * @summary Get application detail with attempt, integrity, resume metadata
+ */
+export const GetRecruiterApplicationParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const getRecruiterApplicationResponseApplicationMatchScoreMin = 0;
+export const getRecruiterApplicationResponseApplicationMatchScoreMax = 100;
+
+export const getRecruiterApplicationResponseApplicationMatchBreakdownSkillMatchMin = 0;
+export const getRecruiterApplicationResponseApplicationMatchBreakdownSkillMatchMax = 100;
+
+export const getRecruiterApplicationResponseApplicationMatchBreakdownExperienceMatchMin = 0;
+export const getRecruiterApplicationResponseApplicationMatchBreakdownExperienceMatchMax = 100;
+
+export const getRecruiterApplicationResponseApplicationMatchBreakdownRoleFitMin = 0;
+export const getRecruiterApplicationResponseApplicationMatchBreakdownRoleFitMax = 100;
+
+export const getRecruiterApplicationResponseApplicationStatusHistoryItemNoteMax = 600;
+
+export const getRecruiterApplicationResponseAttemptIntegrityScoreMin = 0;
+export const getRecruiterApplicationResponseAttemptIntegrityScoreMax = 100;
+
+
+
+export const GetRecruiterApplicationResponse = zod.object({
+  "application": zod.object({
+  "id": zod.string().optional(),
+  "jobId": zod.string(),
+  "jobTitle": zod.string(),
+  "company": zod.string(),
+  "recruiterId": zod.string(),
+  "applicantUserId": zod.string(),
+  "applicantName": zod.string(),
+  "applicantHeadline": zod.string().optional(),
+  "status": zod.enum(['Applied', 'Shortlisted', 'Interview', 'Offer', 'Hired', 'Rejected']),
+  "matchScore": zod.number().int().min(getRecruiterApplicationResponseApplicationMatchScoreMin).max(getRecruiterApplicationResponseApplicationMatchScoreMax).optional(),
+  "matchBreakdown": zod.object({
+  "skillMatch": zod.number().int().min(getRecruiterApplicationResponseApplicationMatchBreakdownSkillMatchMin).max(getRecruiterApplicationResponseApplicationMatchBreakdownSkillMatchMax),
+  "experienceMatch": zod.number().int().min(getRecruiterApplicationResponseApplicationMatchBreakdownExperienceMatchMin).max(getRecruiterApplicationResponseApplicationMatchBreakdownExperienceMatchMax),
+  "roleFit": zod.number().int().min(getRecruiterApplicationResponseApplicationMatchBreakdownRoleFitMin).max(getRecruiterApplicationResponseApplicationMatchBreakdownRoleFitMax),
+  "strengths": zod.array(zod.string()),
+  "missingSkills": zod.array(zod.string()),
+  "recommendation": zod.string()
+}).optional(),
+  "assessmentAttemptId": zod.string().optional(),
+  "statusHistory": zod.array(zod.object({
+  "status": zod.enum(['Applied', 'Shortlisted', 'Interview', 'Offer', 'Hired', 'Rejected']),
+  "changedBy": zod.string(),
+  "at": zod.coerce.date(),
+  "note": zod.string().max(getRecruiterApplicationResponseApplicationStatusHistoryItemNoteMax).optional()
+})).optional(),
+  "appliedAt": zod.coerce.date().optional(),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional()
+}).optional(),
+  "attempt": zod.object({
+  "id": zod.string().optional(),
+  "userId": zod.string(),
+  "jobId": zod.string(),
+  "assessmentId": zod.string(),
+  "score": zod.number().int(),
+  "total": zod.number().int(),
+  "focusLosses": zod.number().int().optional(),
+  "integrityScore": zod.number().int().min(getRecruiterApplicationResponseAttemptIntegrityScoreMin).max(getRecruiterApplicationResponseAttemptIntegrityScoreMax),
+  "flagged": zod.boolean(),
+  "events": zod.array(zod.object({
+  "type": zod.string(),
+  "at": zod.coerce.date()
+})).optional(),
+  "startedAt": zod.coerce.date().optional(),
+  "completedAt": zod.coerce.date().optional(),
+  "createdAt": zod.coerce.date().optional()
+}).optional(),
+  "resume": zod.object({
+  "hasFile": zod.boolean(),
+  "fileName": zod.string().optional(),
+  "sizeBytes": zod.number().int().optional(),
+  "mime": zod.string().optional()
+}).optional()
+})
+
+
+/**
+ * @summary Move application stage (validated transitions + history)
+ */
+export const UpdateApplicationStageParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const updateApplicationStageBodyNoteMax = 600;
+
+
+
+export const UpdateApplicationStageBody = zod.object({
+  "status": zod.enum(['Applied', 'Shortlisted', 'Interview', 'Offer', 'Hired', 'Rejected']),
+  "note": zod.string().max(updateApplicationStageBodyNoteMax).optional()
+})
+
+export const updateApplicationStageResponseApplicationMatchScoreMin = 0;
+export const updateApplicationStageResponseApplicationMatchScoreMax = 100;
+
+export const updateApplicationStageResponseApplicationMatchBreakdownSkillMatchMin = 0;
+export const updateApplicationStageResponseApplicationMatchBreakdownSkillMatchMax = 100;
+
+export const updateApplicationStageResponseApplicationMatchBreakdownExperienceMatchMin = 0;
+export const updateApplicationStageResponseApplicationMatchBreakdownExperienceMatchMax = 100;
+
+export const updateApplicationStageResponseApplicationMatchBreakdownRoleFitMin = 0;
+export const updateApplicationStageResponseApplicationMatchBreakdownRoleFitMax = 100;
+
+export const updateApplicationStageResponseApplicationStatusHistoryItemNoteMax = 600;
+
+
+
+export const UpdateApplicationStageResponse = zod.object({
+  "application": zod.object({
+  "id": zod.string().optional(),
+  "jobId": zod.string(),
+  "jobTitle": zod.string(),
+  "company": zod.string(),
+  "recruiterId": zod.string(),
+  "applicantUserId": zod.string(),
+  "applicantName": zod.string(),
+  "applicantHeadline": zod.string().optional(),
+  "status": zod.enum(['Applied', 'Shortlisted', 'Interview', 'Offer', 'Hired', 'Rejected']),
+  "matchScore": zod.number().int().min(updateApplicationStageResponseApplicationMatchScoreMin).max(updateApplicationStageResponseApplicationMatchScoreMax).optional(),
+  "matchBreakdown": zod.object({
+  "skillMatch": zod.number().int().min(updateApplicationStageResponseApplicationMatchBreakdownSkillMatchMin).max(updateApplicationStageResponseApplicationMatchBreakdownSkillMatchMax),
+  "experienceMatch": zod.number().int().min(updateApplicationStageResponseApplicationMatchBreakdownExperienceMatchMin).max(updateApplicationStageResponseApplicationMatchBreakdownExperienceMatchMax),
+  "roleFit": zod.number().int().min(updateApplicationStageResponseApplicationMatchBreakdownRoleFitMin).max(updateApplicationStageResponseApplicationMatchBreakdownRoleFitMax),
+  "strengths": zod.array(zod.string()),
+  "missingSkills": zod.array(zod.string()),
+  "recommendation": zod.string()
+}).optional(),
+  "assessmentAttemptId": zod.string().optional(),
+  "statusHistory": zod.array(zod.object({
+  "status": zod.enum(['Applied', 'Shortlisted', 'Interview', 'Offer', 'Hired', 'Rejected']),
+  "changedBy": zod.string(),
+  "at": zod.coerce.date(),
+  "note": zod.string().max(updateApplicationStageResponseApplicationStatusHistoryItemNoteMax).optional()
+})).optional(),
+  "appliedAt": zod.coerce.date().optional(),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional()
+})
+})
+
+
+/**
+ * @summary Stream the applicant's resume (owner recruiter only)
+ */
+export const DownloadRecruiterApplicationResumeParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const DownloadRecruiterApplicationResumeResponse = zod.unknown()
+
+
+/**
+ * @summary Aggregated recruiter metrics
+ */
+export const GetRecruiterStatsResponse = zod.object({
+  "openRoles": zod.number().int(),
+  "totalApplicants": zod.number().int(),
+  "shortlisted": zod.number().int(),
+  "interviews": zod.number().int(),
+  "offers": zod.number().int(),
+  "hires": zod.number().int(),
+  "rejected": zod.number().int(),
+  "avgMatch": zod.number().int(),
+  "flaggedAttempts": zod.number().int()
+})
+
+
+/**
+ * @summary Generate an assessment bound to a job (questions without answers)
+ */
+export const generateAssessmentBodyQuestionCountMin = 3;
+export const generateAssessmentBodyQuestionCountMax = 10;
+
+
+
+export const GenerateAssessmentBody = zod.object({
+  "jobId": zod.string(),
+  "assessmentType": zod.enum(['MCQ', 'APTITUDE']).optional(),
+  "questionCount": zod.number().int().min(generateAssessmentBodyQuestionCountMin).max(generateAssessmentBodyQuestionCountMax).optional()
+})
+
+export const GenerateAssessmentResponse = zod.object({
+  "id": zod.string(),
   "title": zod.string(),
   "durationMinutes": zod.number().int(),
   "questions": zod.array(zod.object({
+  "id": zod.number().int(),
   "prompt": zod.string(),
   "options": zod.array(zod.string()),
-  "correctAnswer": zod.string(),
   "explanation": zod.string(),
   "difficulty": zod.enum(['Easy', 'Medium', 'Hard'])
 }))
+})
+
+
+/**
+ * @summary Get an assessment (questions without correctAnswer)
+ */
+export const GetAssessmentParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetAssessmentResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "durationMinutes": zod.number().int(),
+  "questions": zod.array(zod.object({
+  "id": zod.number().int(),
+  "prompt": zod.string(),
+  "options": zod.array(zod.string()),
+  "explanation": zod.string(),
+  "difficulty": zod.enum(['Easy', 'Medium', 'Hard'])
+}))
+})
+
+
+/**
+ * @summary Submit assessment answers; server grades and stores attempt
+ */
+export const SubmitAssessmentParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const submitAssessmentBodyFocusLossesMin = 0;
+
+export const submitAssessmentBodyTimeSpentSecondsMin = 0;
+
+
+
+export const SubmitAssessmentBody = zod.object({
+  "answers": zod.record(zod.string(), zod.string()),
+  "focusLosses": zod.number().int().min(submitAssessmentBodyFocusLossesMin).optional(),
+  "events": zod.array(zod.object({
+  "type": zod.string(),
+  "at": zod.coerce.date()
+})).optional(),
+  "timeSpentSeconds": zod.number().int().min(submitAssessmentBodyTimeSpentSecondsMin).optional(),
+  "identityPledgeSigned": zod.boolean().optional()
+})
+
+export const submitAssessmentResponseIntegrityScoreMin = 0;
+export const submitAssessmentResponseIntegrityScoreMax = 100;
+
+
+
+export const SubmitAssessmentResponse = zod.object({
+  "id": zod.string().optional(),
+  "score": zod.number().int(),
+  "total": zod.number().int(),
+  "percentage": zod.number().int(),
+  "readinessRating": zod.string().optional(),
+  "integrityStatus": zod.string().optional(),
+  "integrityScore": zod.number().int().min(submitAssessmentResponseIntegrityScoreMin).max(submitAssessmentResponseIntegrityScoreMax),
+  "flagged": zod.boolean(),
+  "proxyRiskScore": zod.number().int().optional(),
+  "proxyRiskLevel": zod.string().optional(),
+  "feedback": zod.string().optional(),
+  "strengths": zod.array(zod.string()).optional(),
+  "growthAreas": zod.array(zod.string()).optional(),
+  "skillsBreakdown": zod.array(zod.object({
+
+}).passthrough()).optional(),
+  "completedAt": zod.coerce.date().optional()
+})
+
+
+/**
+ * @summary Server-Sent Events stream (auth required)
+ */
+export const SseEventsResponse = zod.unknown()
+
+
+/**
+ * @summary Persist the user's role (candidate | recruiter) to the server
+ */
+export const SetRoleBody = zod.object({
+  "role": zod.enum(['candidate', 'recruiter']),
+  "companyName": zod.string().optional()
+})
+
+export const SetRoleResponse = zod.object({
+  "message": zod.string(),
+  "role": zod.string()
+})
+
+
+/**
+ * @summary Get the cloud-synced user profile
+ */
+export const GetProfileResponse = zod.object({
+  "userId": zod.string(),
+  "role": zod.enum(['candidate', 'recruiter']),
+  "companyName": zod.string().optional(),
+  "name": zod.string(),
+  "headline": zod.string().optional(),
+  "location": zod.string().optional(),
+  "yearsExperience": zod.number().int().optional(),
+  "skills": zod.array(zod.string()).optional(),
+  "education": zod.string().optional(),
+  "resumeLink": zod.string().optional(),
+  "resumeFileKey": zod.string().optional(),
+  "resumeFileName": zod.string().optional(),
+  "resumeFileMime": zod.string().optional(),
+  "resumeFileSizeBytes": zod.number().int().optional(),
+  "extractedSkills": zod.array(zod.string()).optional(),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional()
+})
+
+
+/**
+ * @summary Update fields on the cloud-synced profile
+ */
+export const UpdateProfileBody = zod.object({
+  "name": zod.string().optional(),
+  "headline": zod.string().optional(),
+  "location": zod.string().optional(),
+  "yearsExperience": zod.number().int().optional(),
+  "skills": zod.array(zod.string()).optional(),
+  "education": zod.string().optional(),
+  "resumeLink": zod.string().optional()
+})
+
+export const UpdateProfileResponse = zod.object({
+  "userId": zod.string(),
+  "role": zod.enum(['candidate', 'recruiter']),
+  "companyName": zod.string().optional(),
+  "name": zod.string(),
+  "headline": zod.string().optional(),
+  "location": zod.string().optional(),
+  "yearsExperience": zod.number().int().optional(),
+  "skills": zod.array(zod.string()).optional(),
+  "education": zod.string().optional(),
+  "resumeLink": zod.string().optional(),
+  "resumeFileKey": zod.string().optional(),
+  "resumeFileName": zod.string().optional(),
+  "resumeFileMime": zod.string().optional(),
+  "resumeFileSizeBytes": zod.number().int().optional(),
+  "extractedSkills": zod.array(zod.string()).optional(),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional()
+})
+
+
+/**
+ * @summary Upload a resume (PDF, DOCX, TXT; max 5 MB) and extract skills
+ */
+export const UploadResumeBody = zod.object({
+  "resume": zod.instanceof(Blob)
+})
+
+export const UploadResumeResponse = zod.object({
+  "message": zod.string(),
+  "resumeFileName": zod.string().optional(),
+  "resumeFileSizeBytes": zod.number().int().optional(),
+  "extractedSkills": zod.array(zod.string()).optional()
+})
+
+
+/**
+ * @summary Download the authenticated user's resume file
+ */
+export const DownloadResumeResponse = zod.unknown()
+
+
+/**
+ * @summary List the authenticated candidate's applications
+ */
+export const ListSyncApplicationsResponseItem = zod.object({
+  "id": zod.string().optional(),
+  "jobId": zod.string(),
+  "jobTitle": zod.string(),
+  "company": zod.string(),
+  "status": zod.string(),
+  "matchScore": zod.number().int().optional(),
+  "appliedAt": zod.coerce.date().optional()
+})
+export const ListSyncApplicationsResponse = zod.array(ListSyncApplicationsResponseItem)
+
+
+/**
+ * @summary Upsert a candidate application record
+ */
+export const upsertSyncApplicationBodyMatchScoreMin = 0;
+export const upsertSyncApplicationBodyMatchScoreMax = 100;
+
+
+
+export const UpsertSyncApplicationBody = zod.object({
+  "jobId": zod.string(),
+  "jobTitle": zod.string(),
+  "company": zod.string(),
+  "status": zod.enum(['Applied', 'Shortlisted', 'Interview', 'Offer', 'Hired', 'Rejected']).optional(),
+  "matchScore": zod.number().min(upsertSyncApplicationBodyMatchScoreMin).max(upsertSyncApplicationBodyMatchScoreMax).optional(),
+  "appliedAt": zod.coerce.date().optional()
+})
+
+export const UpsertSyncApplicationResponse = zod.object({
+  "id": zod.string().optional(),
+  "jobId": zod.string(),
+  "jobTitle": zod.string(),
+  "company": zod.string(),
+  "status": zod.string(),
+  "matchScore": zod.number().int().optional(),
+  "appliedAt": zod.coerce.date().optional()
 })
 
 

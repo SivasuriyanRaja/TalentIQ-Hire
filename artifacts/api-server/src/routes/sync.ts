@@ -1,135 +1,47 @@
-/**
- * sync.ts — Cross-device data sync routes for TalentIQ
+﻿/**
+ * sync.ts — Cloud-synced profile, resume, and application routes.
  *
- * Routes:
- *  GET    /api/sync/profile          — fetch signed-in user's cloud profile
- *  PUT    /api/sync/profile          — upsert cloud profile (text fields)
- *  POST   /api/sync/profile/resume   — upload resume file (PDF/DOCX/TXT), extract skills
- *  GET    /api/sync/profile/resume   — download resume file
- *  GET    /api/sync/applications     — list user's cloud applications
- *  POST   /api/sync/applications     — upsert an application (create or update status)
- *  DELETE /api/sync/applications/:jobId — remove an application
- *  GET    /api/sync/saved-jobs       — list saved job IDs
- *  POST   /api/sync/saved-jobs       — toggle saved status for a jobId
- *  GET    /api/sync/stages           — recruiter: list all candidate stage updates
- *  PUT    /api/sync/stages/:name     — recruiter: upsert stage for a candidate name
+ * Legacy recruiter-stage routes (keyed by candidate name) and the legacy
+ * CloudApplication/RecruiterStageUpdate models have been removed. Recruiters
+ * now use /api/recruiter/* and candidates use /api/applications plus the new
+ * /api/assessments/* contract.
  */
 
+import mongoose from "mongoose";
 import { getAuth } from "@clerk/express";
 import OpenAI from "openai";
-import multer from "multer";
-import path from "path";
 import fs from "fs";
-import crypto from "crypto";
+import path from "path";
 import { Router, type NextFunction, type Request, type Response } from "express";
+import { z } from "zod";
 import {
+  Application,
+  AssessmentAttempt,
+  Job,
   UserProfile,
-  CloudApplication,
-  RecruiterStageUpdate,
-  SavedJob,
-  CloudAssessmentAttempt,
 } from "@workspace/db";
+import { logger } from "../lib/logger";
+import {
+  requireAuth,
+  resolveAuth,
+} from "../lib/auth";
+import {
+  upload,
+  handleResumeUpload,
+  readFileText,
+  validateResumeMagic,
+  sanitizeFileName,
+} from "../lib/resume";
 import { RESUME_UPLOAD_DIR } from "../app";
 
 const router = Router();
 
-// ─── Multer setup ───────────────────────────────────────────────────────────
-
-const ALLOWED_MIME_TYPES = new Set([
-  "application/pdf",
-  "application/x-pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "text/plain",
-  "application/octet-stream",
-]);
-
-const ALLOWED_EXTENSIONS = new Set([".pdf", ".doc", ".docx", ".txt"]);
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
-
-const storage = multer.diskStorage({
-  destination(_req, _file, cb) {
-    cb(null, RESUME_UPLOAD_DIR);
-  },
-  filename(_req, file, cb) {
-    const uid = crypto.randomBytes(16).toString("hex");
-    const ext = path.extname(file.originalname).toLowerCase() || ".pdf";
-    cb(null, `${uid}${ext}`);
-  },
-});
-
-const upload = multer({
-  storage,
-  limits: { fileSize: MAX_FILE_SIZE_BYTES },
-  fileFilter(_req, file, cb) {
-    const ext = path.extname(file.originalname).toLowerCase();
-    if (ALLOWED_EXTENSIONS.has(ext) || ALLOWED_MIME_TYPES.has(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error("Only PDF, Word (.doc, .docx), and plain-text (.txt) files are accepted."));
-    }
-  },
-});
-
-function handleResumeUpload(req: Request, res: Response, next: NextFunction) {
-  upload.single("resume")(req, res, (err) => {
-    if (err) {
-      if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
-        res.status(400).json({ message: "Resume file exceeds the 5 MB limit." });
-        return;
-      }
-      res.status(400).json({ message: err.message || "Invalid resume upload." });
-      return;
-    }
-    next();
-  });
-}
-
-// ─── Auth helper ─────────────────────────────────────────────────────────────
-
-function getRequestUserId(req: Request): string {
-  const resolved = (req as any).resolvedUserId;
-  if (resolved) return resolved;
-  try {
-    const auth = getAuth(req);
-    if (auth?.userId) return auth.userId;
-  } catch {}
-  return (req.headers["x-user-id"] as string) || "user_demo_seeker";
-}
-
-function requireAuth(req: Request, res: Response, next: NextFunction) {
-  const clerkPubKey = process.env.CLERK_PUBLISHABLE_KEY;
-  const isClerkConfigured =
-    Boolean(clerkPubKey) && !clerkPubKey?.includes("REPLACE");
-
-  let userId: string | null | undefined = null;
-  try {
-    const auth = getAuth(req);
-    userId = auth?.userId;
-  } catch {}
-
-  if (!userId) {
-    userId = req.headers["x-user-id"] as string;
-  }
-
-  // In development / demo mode or if Clerk is unconfigured, fallback to demo seeker
-  if (!userId && !isClerkConfigured) {
-    userId = "user_demo_seeker";
-  }
-
-  if (!userId) {
-    res.status(401).json({ message: "Sign in to sync your TalentIQ data." });
-    return;
-  }
-
-  (req as any).resolvedUserId = userId;
-  next();
-}
-
-// ─── OpenAI & Skill Extraction helpers ───────────────────────────────────────
-
 const xkiroBaseUrl = "https://api.xkiro.com/v1";
 const xkiroModel = "mistralai/mistral-large-4-0";
+
+function sendError(res: Response, status: number, message: string) {
+  return res.status(status).json({ error: message });
+}
 
 function getOpenAI(): OpenAI | null {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -162,10 +74,6 @@ function extractSkillsFromKeywords(text: string): string[] {
   return found;
 }
 
-/**
- * Extract up to 20 professional skills from resume text.
- * Uses OpenAI if configured, otherwise falls back to smart keyword scanning.
- */
 async function extractSkillsFromText(text: string): Promise<string[]> {
   const client = getOpenAI();
   if (client && text.trim()) {
@@ -176,12 +84,9 @@ async function extractSkillsFromText(text: string): Promise<string[]> {
           {
             role: "system",
             content:
-              "You are a technical recruiter. Extract a list of concrete professional skills from the resume text provided. Return ONLY a JSON object with a single key 'skills' whose value is an array of up to 20 concise skill strings (e.g. 'React', 'Python', 'Project Management'). Do not include soft skills or generic phrases. Each skill must be 1–5 words and under 60 characters.",
+              "You are a technical recruiter. Extract a list of concrete professional skills from the resume text provided. Return ONLY a JSON object with a single key 'skills' whose value is an array of up to 20 concise skill strings.",
           },
-          {
-            role: "user",
-            content: text.slice(0, 8000),
-          },
+          { role: "user", content: text.slice(0, 8000) },
         ],
         response_format: { type: "json_object" },
         temperature: 0.15,
@@ -208,61 +113,66 @@ async function extractSkillsFromText(text: string): Promise<string[]> {
     }
   }
 
-  // Fallback to keyword matching from resume text
   const keywordSkills = extractSkillsFromKeywords(text);
   if (keywordSkills.length > 0) return keywordSkills;
 
-  // Final fallback
   return ["TypeScript", "React Native", "Mobile Architecture", "RESTful APIs", "System Design"];
 }
 
-/**
- * Read text from an uploaded file.
- * Supports plain text and PDF (via pdf-parse).
- */
-async function readFileText(filePath: string, mime: string): Promise<string> {
-  const ext = path.extname(filePath).toLowerCase();
-  if (mime === "text/plain" || ext === ".txt") {
-    try {
-      return fs.readFileSync(filePath, "utf-8");
-    } catch {
-      return "";
-    }
-  }
-  if (mime === "application/pdf" || ext === ".pdf" || mime === "application/x-pdf") {
-    try {
-      const pdfParse = await import("pdf-parse").then((m) => m.default ?? m);
-      const buffer = fs.readFileSync(filePath);
-      const data = await pdfParse(buffer as Buffer);
-      return data.text ?? "";
-    } catch {
-      return "";
-    }
-  }
-  return "";
-}
+// ─── Role sync (NEW) ──────────────────────────────────────────────────────
 
-// ─── Profile routes ──────────────────────────────────────────────────────────
+const RoleSchema = z.object({
+  role: z.enum(["candidate", "recruiter"]),
+  companyName: z.string().max(160).optional(),
+});
 
-/** GET /api/sync/profile */
+router.post("/sync/role", requireAuth, async (req: Request, res: Response) => {
+  const parsed = RoleSchema.safeParse(req.body);
+  if (!parsed.success) {
+    sendError(res, 400, "Valid role is required.");
+    return;
+  }
+
+  const { userId } = await resolveAuth(req);
+  const { role, companyName } = parsed.data;
+
+  try {
+    await UserProfile.findOneAndUpdate(
+      { userId },
+      {
+        $set: {
+          role,
+          ...(role === "recruiter" && companyName != null ? { companyName } : {}),
+        },
+      },
+      { upsert: true, setDefaultsOnInsert: true, new: true, lean: true },
+    );
+      res.json({ message: "Role saved.", role });
+  } catch (err) {
+    (req as any).log?.error("Failed to save role", String(err));
+    res.status(500).json({ error: "Could not save role." });
+  }
+});
+
+// ─── Profile routes ───────────────────────────────────────────────────────
+
 router.get("/sync/profile", requireAuth, async (req, res) => {
-  const userId = getRequestUserId(req);
+  const { userId } = await resolveAuth(req);
   try {
     const profile = await UserProfile.findOne({ userId }).lean();
     if (!profile) {
-      res.status(404).json({ message: "No cloud profile yet." });
+      res.status(404).json({ error: "No cloud profile yet." });
       return;
     }
     res.json(profile);
   } catch (err) {
-    req.log.error({ err }, "Failed to fetch cloud profile");
-    res.status(500).json({ message: "Could not load your profile." });
+    (req as any).log?.error({ err }, "Failed to fetch cloud profile");
+    res.status(500).json({ error: "Could not load your profile." });
   }
 });
 
-/** PUT /api/sync/profile — upsert profile text fields */
 router.put("/sync/profile", requireAuth, async (req, res) => {
-  const userId = getRequestUserId(req);
+  const { userId } = await resolveAuth(req);
   const body = req.body as Record<string, unknown>;
 
   const allowed = [
@@ -283,7 +193,7 @@ router.put("/sync/profile", requireAuth, async (req, res) => {
   if (typeof update.name === "string") {
     update.name = update.name.trim().slice(0, 120);
     if (!update.name) {
-      res.status(400).json({ message: "Name is required." });
+      sendError(res, 400, "Name is required.");
       return;
     }
   }
@@ -296,56 +206,54 @@ router.put("/sync/profile", requireAuth, async (req, res) => {
     );
     res.json(profile);
   } catch (err) {
-    req.log.error({ err }, "Failed to save cloud profile");
-    res.status(500).json({ message: "Could not save your profile." });
+    (req as any).log?.error({ err }, "Failed to save cloud profile");
+    res.status(500).json({ error: "Could not save your profile." });
   }
 });
 
-// ─── Resume upload route ─────────────────────────────────────────────────────
+// ─── Resume upload ────────────────────────────────────────────────────────
 
-/**
- * POST /api/sync/profile/resume
- * Accepts multipart/form-data with field name "resume".
- * 1. Saves the file to disk under a secure random filename
- * 2. Deletes any previously uploaded resume for this user
- * 3. Extracts text from the file (PDF / TXT)
- * 4. Extracts skills from the text
- * 5. Updates the UserProfile with file metadata + extracted skills
- */
 router.post(
   "/sync/profile/resume",
   requireAuth,
   handleResumeUpload,
   async (req, res) => {
-    const userId = getRequestUserId(req);
+    const { userId } = await resolveAuth(req);
     const file = req.file;
-
     if (!file) {
-      res.status(400).json({ message: "No resume file was uploaded." });
+      sendError(res, 400, "No resume file was uploaded.");
+      return;
+    }
+
+    const ext = path.extname(file.originalname).toLowerCase();
+    try {
+      validateResumeMagic(file.path, ext);
+    } catch {
+      try { fs.unlinkSync(file.path); } catch {}
+      sendError(res, 400, "File contents do not match the declared file type.");
       return;
     }
 
     try {
-      // Delete the old file if one exists
       const existing = (await UserProfile.findOne({ userId }).lean()) as any;
       if (existing?.resumeFileKey) {
         const oldPath = path.join(RESUME_UPLOAD_DIR, existing.resumeFileKey);
-        if (fs.existsSync(oldPath)) {
+          if (fs.existsSync(oldPath)) {
           try { fs.unlinkSync(oldPath); } catch {}
         }
       }
 
-      // Extract text and skills
-      const resumeText = await readFileText(file.path, file.mimetype);
+      const resumeText = await readFileText(file.path, ext);
       const extractedSkills = await extractSkillsFromText(resumeText);
 
-      // Persist metadata in UserProfile
+      const safeName = sanitizeFileName(file.originalname);
+
       const profile = await UserProfile.findOneAndUpdate(
         { userId },
         {
           $set: {
             resumeFileKey: file.filename,
-            resumeFileName: file.originalname.slice(0, 260),
+            resumeFileName: safeName,
             resumeFileMime: file.mimetype,
             resumeFileSizeBytes: file.size,
             extractedSkills,
@@ -356,32 +264,30 @@ router.post(
 
       res.json({
         message: "Resume uploaded and skills extracted.",
-        resumeFileName: file.originalname,
+        resumeFileName: safeName,
         resumeFileSizeBytes: file.size,
         extractedSkills,
         profile,
       });
     } catch (err) {
-      req.log.error({ err }, "Resume upload failed");
-      // Clean up the uploaded file on error
-      try { fs.unlinkSync(file.path); } catch { /* ignore */ }
-      res.status(500).json({ message: "Resume upload failed. Please try again." });
+      (req as any).log?.error({ err }, "Resume upload failed");
+      try { fs.unlinkSync(file.path); } catch {}
+      res.status(500).json({ error: "Resume upload failed. Please try again." });
     }
   },
 );
 
-/** GET /api/sync/profile/resume — download the user's own resume file */
 router.get("/sync/profile/resume", requireAuth, async (req, res) => {
-  const userId = getRequestUserId(req);
+  const { userId } = await resolveAuth(req);
   try {
     const profile = (await UserProfile.findOne({ userId }).lean()) as any;
     if (!profile?.resumeFileKey) {
-      res.status(404).json({ message: "No resume file found." });
+      res.status(404).json({ error: "No resume file found." });
       return;
     }
     const filePath = path.join(RESUME_UPLOAD_DIR, profile.resumeFileKey);
     if (!fs.existsSync(filePath)) {
-      res.status(404).json({ message: "Resume file not found on server." });
+      res.status(404).json({ error: "Resume file not found on server." });
       return;
     }
     res.setHeader(
@@ -391,285 +297,146 @@ router.get("/sync/profile/resume", requireAuth, async (req, res) => {
     res.setHeader("Content-Type", profile.resumeFileMime ?? "application/octet-stream");
     res.sendFile(filePath);
   } catch (err) {
-    req.log.error({ err }, "Resume download failed");
-    res.status(500).json({ message: "Could not download resume." });
+    (req as any).log?.error({ err }, "Resume download failed");
+    res.status(500).json({ error: "Could not download resume." });
   }
 });
 
-// ─── Applications sync routes ─────────────────────────────────────────────────
+// ─── Applications (mapped to the single source of truth) ──────────────────
 
-/** GET /api/sync/applications — list all cloud applications for signed-in user */
 router.get("/sync/applications", requireAuth, async (req, res) => {
-  const userId = getRequestUserId(req);
+  const { userId } = await resolveAuth(req);
   try {
-    const applications = await CloudApplication.find({ userId })
+    const applications = await Application.find({ applicantUserId: userId })
       .sort({ createdAt: -1 })
       .lean();
-    res.json(applications);
+    res.json(
+      applications.map((a) => ({
+        id: a._id,
+        jobId: a.jobId,
+        jobTitle: a.jobTitle,
+        company: a.company,
+        status: a.status,
+        matchScore: a.matchScore,
+        appliedAt: a.appliedAt,
+      })),
+    );
   } catch (err) {
-    req.log.error({ err }, "Failed to fetch cloud applications");
-    res.status(500).json({ message: "Could not load applications." });
+    (req as any).log?.error({ err }, "Failed to fetch cloud applications");
+    res.status(500).json({ error: "Could not load applications." });
   }
 });
 
-/** POST /api/sync/applications — upsert a single application */
-router.post("/sync/applications", requireAuth, async (req, res) => {
-  const userId = getRequestUserId(req);
-  const body = req.body as Record<string, unknown>;
+const ApplicationUpsertSchema = z.object({
+  jobId: z.string(),
+  jobTitle: z.string().max(160),
+  company: z.string().max(160),
+  status: z
+    .enum(["Applied", "Shortlisted", "Interview", "Offer", "Hired", "Rejected"])
+    .default("Applied"),
+  matchScore: z.number().min(0).max(100).default(0),
+  appliedAt: z.string().optional(),
+});
 
-  if (
-    typeof body.jobId !== "string" ||
-    !body.jobId.trim() ||
-    typeof body.jobTitle !== "string" ||
-    typeof body.company !== "string"
-  ) {
-    res.status(400).json({ message: "jobId, jobTitle and company are required." });
+router.post("/sync/applications", requireAuth, async (req, res) => {
+  const { userId } = await resolveAuth(req);
+  const parsed = ApplicationUpsertSchema.safeParse(req.body);
+  if (!parsed.success) {
+    sendError(res, 400, "jobId, jobTitle and company are required.");
     return;
   }
 
-  const VALID_STATUSES = new Set([
-    "Applied",
-    "Shortlisted",
-    "Interview",
-    "Offer",
-    "Rejected",
-  ]);
-  const status =
-    typeof body.status === "string" && VALID_STATUSES.has(body.status)
-      ? body.status
-      : "Applied";
+  const { jobId, jobTitle, company, status, matchScore, appliedAt } = parsed.data;
 
   try {
-    const app = await CloudApplication.findOneAndUpdate(
-      { userId, jobId: body.jobId.trim() },
+    const app = await Application.findOneAndUpdate(
+      { applicantUserId: userId, jobId: jobId.trim() },
       {
         $set: {
-          jobTitle: String(body.jobTitle).trim().slice(0, 160),
-          company: String(body.company).trim().slice(0, 160),
+          jobTitle: jobTitle.trim().slice(0, 160),
+          company: company.trim().slice(0, 160),
           status,
-          matchScore:
-            typeof body.matchScore === "number" &&
-            Number.isFinite(body.matchScore)
-              ? Math.max(0, Math.min(100, Math.round(body.matchScore)))
-              : 0,
-          appliedAt:
-            typeof body.appliedAt === "string"
-              ? body.appliedAt
-              : new Date().toISOString(),
+          matchScore: Math.max(0, Math.min(100, Math.round(matchScore))),
+          appliedAt: typeof appliedAt === "string" ? appliedAt : new Date().toISOString(),
         },
       },
       { upsert: true, new: true, setDefaultsOnInsert: true, lean: true },
     );
     res.json(app);
   } catch (err) {
-    req.log.error({ err }, "Failed to upsert cloud application");
-    res.status(500).json({ message: "Could not save application." });
+    (req as any).log?.error({ err }, "Failed to upsert cloud application");
+    res.status(500).json({ error: "Could not save application." });
   }
 });
 
-/** DELETE /api/sync/applications/:jobId — remove an application */
 router.delete("/sync/applications/:jobId", requireAuth, async (req, res) => {
-  const userId = getRequestUserId(req);
+  const { userId } = await resolveAuth(req);
   const jobId = req.params.jobId;
   try {
-    await CloudApplication.deleteOne({ userId, jobId });
+    await Application.deleteOne({ applicantUserId: userId, jobId });
     res.json({ message: "Application removed." });
   } catch (err) {
-    req.log.error({ err }, "Failed to delete cloud application");
-    res.status(500).json({ message: "Could not remove application." });
+    (req as any).log?.error({ err }, "Failed to delete cloud application");
+    res.status(500).json({ error: "Could not remove application." });
   }
 });
 
-// ─── Saved Jobs sync routes ───────────────────────────────────────────────────
+// ─── Assessment attempts (legacy sink, best effort) ───────────────────────
 
-/** GET /api/sync/saved-jobs — list saved job IDs for signed-in user */
-router.get("/sync/saved-jobs", requireAuth, async (req, res) => {
-  const userId = getRequestUserId(req);
-  try {
-    const saved = await SavedJob.find({ userId }).lean();
-    res.json(saved.map((s) => s.jobId));
-  } catch (err) {
-    req.log.error({ err }, "Failed to fetch saved jobs");
-    res.status(500).json({ message: "Could not load saved jobs." });
-  }
-});
-
-/** POST /api/sync/saved-jobs — toggle saved status for a jobId */
-router.post("/sync/saved-jobs", requireAuth, async (req, res) => {
-  const userId = getRequestUserId(req);
-  const body = req.body as Record<string, unknown>;
-
-  if (typeof body.jobId !== "string" || !body.jobId.trim()) {
-    res.status(400).json({ message: "jobId is required." });
-    return;
-  }
-
-  const jobId = body.jobId.trim();
-
-  try {
-    const existing = await SavedJob.findOne({ userId, jobId });
-    if (existing) {
-      await SavedJob.deleteOne({ userId, jobId });
-      res.json({ saved: false, jobId });
-    } else {
-      await SavedJob.create({ userId, jobId });
-      res.json({ saved: true, jobId });
-    }
-  } catch (err) {
-    req.log.error({ err }, "Failed to toggle saved job");
-    res.status(500).json({ message: "Could not update saved job." });
-  }
-});
-
-// ─── Recruiter stage sync routes ──────────────────────────────────────────────
-
-/** GET /api/sync/stages — recruiter: get all candidate stage updates */
-router.get("/sync/stages", requireAuth, async (req, res) => {
-  const recruiterId = getRequestUserId(req);
-  try {
-    const stages = await RecruiterStageUpdate.find({ recruiterId }).lean();
-    const result: Record<string, string> = {};
-    for (const s of stages) {
-      result[s.candidateName] = s.status;
-    }
-    res.json(result);
-  } catch (err) {
-    req.log.error({ err }, "Failed to fetch recruiter stages");
-    res.status(500).json({ message: "Could not load pipeline stages." });
-  }
-});
-
-/** PUT /api/sync/stages/:name — recruiter: upsert stage for a candidate */
-router.put("/sync/stages/:name", requireAuth, async (req, res) => {
-  const recruiterId = getRequestUserId(req);
-  const rawName = Array.isArray(req.params.name) ? req.params.name[0] : req.params.name;
-  const candidateName = decodeURIComponent(rawName ?? "").slice(0, 120);
-  const body = req.body as Record<string, unknown>;
-
-  const VALID_STATUSES = new Set([
-    "Applied",
-    "Shortlisted",
-    "Interview",
-    "Offer",
-    "Rejected",
-  ]);
-
-  if (typeof body.status !== "string" || !VALID_STATUSES.has(body.status)) {
-    res.status(400).json({ message: "Valid status is required." });
-    return;
-  }
-
-  try {
-    const stage = await RecruiterStageUpdate.findOneAndUpdate(
-      { recruiterId, candidateName },
-      { $set: { status: body.status } },
-      { upsert: true, new: true, setDefaultsOnInsert: true, lean: true },
-    );
-    res.json(stage);
-  } catch (err) {
-    req.log.error({ err }, "Failed to update recruiter stage");
-    res.status(500).json({ message: "Could not update pipeline stage." });
-  }
-});
-
-// ─── Assessment attempts sync routes ──────────────────────────────────────────
-
-/** POST /api/sync/assessments — save a completed assessment attempt */
 router.post("/sync/assessments", requireAuth, async (req, res) => {
-  const userId = getRequestUserId(req);
+  const { userId } = await resolveAuth(req);
   const body = req.body as Record<string, unknown>;
 
-  if (
-    typeof body.jobId !== "string" ||
-    typeof body.score !== "number" ||
-    typeof body.total !== "number"
-  ) {
-    res.status(400).json({ message: "jobId, score and total are required." });
+  const jobId = typeof body.jobId === "string" && body.jobId.trim();
+  const score = typeof body.score === "number" ? body.score : 0;
+  const total = typeof body.total === "number" && body.total >= 1 ? body.total : 1;
+  const focusLosses = typeof body.focusLosses === "number" ? Math.max(0, body.focusLosses) : 0;
+
+  if (!jobId) {
+    sendError(res, 400, "jobId is required.");
     return;
   }
 
-  const score = Math.max(0, body.score);
-  const total = Math.max(1, body.total);
-  const percentage = Math.round((score / total) * 100);
-  const focusLosses = typeof body.focusLosses === "number" ? Math.max(0, body.focusLosses) : 0;
-  const speedAnomalies = typeof body.speedAnomalies === "number" ? Math.max(0, body.speedAnomalies) : 0;
-  const clipboardViolations = typeof body.clipboardViolations === "number" ? Math.max(0, body.clipboardViolations) : 0;
-  const proxyRiskScore = typeof body.proxyRiskScore === "number" ? Math.max(0, Math.min(100, Math.round(body.proxyRiskScore))) : 0;
-  const proxyRiskLevel = body.proxyRiskLevel === "HIGH" || body.proxyRiskLevel === "MEDIUM" ? body.proxyRiskLevel : "LOW";
-  const identityPledgeSigned = body.identityPledgeSigned !== false;
-  const watermarkToken = typeof body.watermarkToken === "string" ? body.watermarkToken.slice(0, 120) : undefined;
-  const timeSpentSeconds = typeof body.timeSpentSeconds === "number" ? Math.max(0, body.timeSpentSeconds) : 0;
-  const candidateName = typeof body.candidateName === "string" ? body.candidateName.slice(0, 120) : "Candidate";
-  const jobTitle = typeof body.jobTitle === "string" ? body.jobTitle.slice(0, 160) : "Role";
-  const company = typeof body.company === "string" ? body.company.slice(0, 160) : "Company";
-  const assessmentTitle = typeof body.assessmentTitle === "string" ? body.assessmentTitle.slice(0, 160) : `${jobTitle} Assessment`;
-  const feedback = typeof body.feedback === "string" ? body.feedback.slice(0, 800) : "";
-  const skillsBreakdown = Array.isArray(body.skillsBreakdown)
-    ? (body.skillsBreakdown as unknown[]).filter((s): s is { skill: string; score: number } =>
-        typeof s === "object" && s !== null && typeof (s as any).skill === "string" && typeof (s as any).score === "number"
-      )
-    : [];
+  const integrityScore = Math.max(0, 100 - 20 * focusLosses);
 
   try {
-    const attempt = await CloudAssessmentAttempt.create({
+    await AssessmentAttempt.create({
       userId,
-      candidateName,
-      jobId: body.jobId,
-      jobTitle,
-      company,
-      assessmentTitle,
+      jobId: new mongoose.Types.ObjectId(),
+      assessmentId: new mongoose.Types.ObjectId(),
       score,
       total,
-      percentage,
       focusLosses,
-      speedAnomalies,
-      clipboardViolations,
-      proxyRiskScore,
-      proxyRiskLevel,
-      identityPledgeSigned,
-      watermarkToken,
-      timeSpentSeconds,
-      feedback,
-      skillsBreakdown,
-      completedAt: typeof body.completedAt === "string" ? body.completedAt : new Date().toISOString(),
+      integrityScore,
+      flagged: focusLosses >= 3,
+      events: [],
+      startedAt: new Date(),
+      completedAt: new Date(),
     });
-
-    res.json({ message: "Assessment attempt recorded successfully", attempt });
+    res.json({ message: "Assessment attempt recorded." });
   } catch (err) {
-    req.log.error({ err }, "Failed to save assessment attempt");
-    res.status(500).json({ message: "Could not save assessment attempt." });
+    (req as any).log?.error({ err }, "Failed to save assessment attempt");
+    res.status(500).json({ error: "Could not save assessment attempt." });
   }
 });
 
-/** GET /api/sync/assessments — get candidate's past assessment attempts */
 router.get("/sync/assessments", requireAuth, async (req, res) => {
-  const userId = getRequestUserId(req);
+  const { userId } = await resolveAuth(req);
   try {
-    const attempts = await CloudAssessmentAttempt.find({ userId })
+    const attempts = await AssessmentAttempt.find({ userId })
       .sort({ createdAt: -1 })
       .limit(30)
       .lean();
     res.json(attempts);
   } catch (err) {
-    req.log.error({ err }, "Failed to fetch assessment attempts");
-    res.status(500).json({ message: "Could not load assessments." });
-  }
-});
-
-/** GET /api/sync/recruiter/assessments — recruiter view: get candidate submissions */
-router.get("/sync/recruiter/assessments", requireAuth, async (req, res) => {
-  const jobId = req.query.jobId as string | undefined;
-  const filter = jobId ? { jobId } : {};
-  try {
-    const attempts = await CloudAssessmentAttempt.find(filter)
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .lean();
-    res.json(attempts);
-  } catch (err) {
-    req.log.error({ err }, "Failed to fetch recruiter candidate assessments");
-    res.status(500).json({ message: "Could not load candidate assessments." });
+    (req as any).log?.error({ err }, "Failed to fetch assessment attempts");
+    res.status(500).json({ error: "Could not load assessments." });
   }
 });
 
 export default router;
+
+
+
+
+

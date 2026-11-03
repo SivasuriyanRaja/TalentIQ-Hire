@@ -8,12 +8,41 @@
  */
 
 import type {
-  AssessmentGenerationRequestAssessmentType,
+  AssessmentGenerateRequestAssessmentType,
   AssessmentGenerationResponse,
-  AssessmentQuestion,
-  MatchAnalysisRequest,
-  MatchAnalysisResponse,
+  AssessmentQuestionClient,
 } from "@workspace/api-zod";
+
+// Server-internal assessment question (includes correctAnswer, never sent to client)
+export interface ServerAssessmentQuestion {
+  id: number;
+  prompt: string;
+  options: string[];
+  correctAnswer: string;
+  explanation: string;
+  difficulty: "Easy" | "Medium" | "Hard";
+}
+
+// Local types for the legacy match-analysis engine
+// (shared spec removed MatchAnalysis*; this module keeps the fallback engine.)
+interface LocalMatchAnalysisRequest {
+  candidateName: string;
+  yearsExperience: number;
+  candidateSkills: string[];
+  jobTitle: string;
+  company: string;
+  description: string;
+  requiredSkills: string[];
+}
+interface LocalMatchAnalysisResponse {
+  matchScore: number;
+  skillMatch: number;
+  experienceMatch: number;
+  roleFit: number;
+  strengths: string[];
+  missingSkills: string[];
+  recommendation: string;
+}
 
 interface QuestionTemplate {
   skills: string[];
@@ -276,7 +305,7 @@ function buildCustomQuestion(
   skill: string,
   difficulty: "Easy" | "Medium" | "Hard",
   index: number,
-): AssessmentQuestion {
+): ServerAssessmentQuestion {
   const cleanSkill = skill.trim();
   const templates = [
     {
@@ -316,6 +345,7 @@ function buildCustomQuestion(
 
   const chosen = templates[index % templates.length];
   return {
+    id: index,
     prompt: chosen.prompt,
     options: chosen.options,
     correctAnswer: chosen.correctAnswer,
@@ -327,7 +357,7 @@ function buildCustomQuestion(
 export function generateDynamicAssessment(
   jobTitle: string,
   requiredSkills: string[] = [],
-  assessmentType: AssessmentGenerationRequestAssessmentType = "MCQ",
+  assessmentType: AssessmentGenerateRequestAssessmentType = "MCQ",
   questionCount: number = 5,
 ): AssessmentGenerationResponse {
   const safeSkills = Array.isArray(requiredSkills) ? requiredSkills : [];
@@ -354,7 +384,7 @@ export function generateDynamicAssessment(
 
   scored.sort((a, b) => b.score - a.score);
 
-  const selectedQuestions: AssessmentQuestion[] = [];
+  const selectedQuestions: ServerAssessmentQuestion[] = [];
   const usedPrompts = new Set<string>();
 
   for (const item of scored) {
@@ -362,6 +392,7 @@ export function generateDynamicAssessment(
     if (!usedPrompts.has(item.q.prompt)) {
       usedPrompts.add(item.q.prompt);
       selectedQuestions.push({
+        id: selectedQuestions.length,
         prompt: item.q.prompt,
         options: [...item.q.options],
         correctAnswer: item.q.correctAnswer,
@@ -391,6 +422,7 @@ export function generateDynamicAssessment(
     : `${jobTitle} · Role Skill Assessment`;
 
   return {
+    id: String(Date.now()),
     title,
     durationMinutes,
     questions: selectedQuestions.slice(0, questionCount),
@@ -400,8 +432,8 @@ export function generateDynamicAssessment(
 // ── Smart Match Analysis Fallback ─────────────────────────────────────────────
 
 export function generateDynamicMatchAnalysis(
-  request: MatchAnalysisRequest,
-): MatchAnalysisResponse {
+  request: LocalMatchAnalysisRequest,
+): LocalMatchAnalysisResponse {
   const candidateSkills = new Set(
     request.candidateSkills.map((s) => s.toLowerCase().trim()),
   );
@@ -481,7 +513,7 @@ export interface EvaluationResult {
 }
 
 export function evaluateAssessment(
-  questions: AssessmentQuestion[],
+  questions: ServerAssessmentQuestion[],
   userAnswers: Record<number, string>,
   focusLosses: number = 0,
   timeSpentSeconds: number = 0,

@@ -30,7 +30,6 @@ import {
   CandidateProfile,
   initialProfile,
   Job,
-  sampleJobs,
   UserRole,
   WorldRegion,
 } from '@/data/talentiq';
@@ -199,6 +198,15 @@ export function TalentIQProvider({
   );
 
   const activeUserId = authUser?.id ?? userId;
+
+  const authFetch = useCallback(async (path: string, init: RequestInit = {}): Promise<Response> => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(init.headers as Record<string, string>) };
+    try {
+      const token = await getToken?.();
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+    } catch {}
+    return fetch(getApiEndpoint(path), { ...init, headers });
+  }, [getToken]);
   const storageKey = activeUserId
     ? `${STORAGE_PREFIX}:${activeUserId}`
     : authMode === 'guest'
@@ -811,9 +819,14 @@ export function TalentIQProvider({
 
   // ── Core Workspace Actions ────────────────────────────────────────────────
 
-  const setRole = useCallback((role: UserRole) => {
+  const setRole = useCallback(async (role: UserRole) => {
     setState((current) => ({ ...current, role }));
-  }, []);
+    try {
+      await authFetch('/sync/role', { method: 'POST', body: JSON.stringify({ role }) });
+    } catch {
+      // Server role write failed; local role still applied.
+    }
+  }, [authFetch]);
 
   const setWorldRegion = useCallback((region: WorldRegion) => {
     setState((current) => ({ ...current, worldRegion: region }));
@@ -831,7 +844,7 @@ export function TalentIQProvider({
   );
 
   const applyToJob = useCallback(
-    (
+    async (
       jobId: string,
       jobTitle = '',
       company = '',
@@ -848,16 +861,23 @@ export function TalentIQProvider({
           appliedAt: new Date().toISOString(),
           matchScore,
         };
-        if (isSignedIn) {
-          void cloudSync.pushApplication(newApp, jobTitle, company);
-        }
         return {
           ...current,
           applications: [newApp, ...current.applications],
         };
       });
+      if (isSignedIn) {
+        try {
+          await authFetch('/api/applications', {
+            method: 'POST',
+            body: JSON.stringify({ jobId }),
+          });
+        } catch {
+          // Server apply failed; local optimistic application remains.
+        }
+      }
     },
-    [cloudSync, isSignedIn],
+    [authFetch, isSignedIn],
   );
 
   const toggleSavedJob = useCallback(
@@ -985,7 +1005,7 @@ export function TalentIQProvider({
       isSyncing,
       storageError,
       syncError,
-      jobs: [...state.customJobs, ...sampleJobs],
+      jobs: state.customJobs,
       authUser,
       authMode,
       isUserSignedIn,

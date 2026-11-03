@@ -12,7 +12,9 @@
     "start:api": "node artifacts/api-server/dist/index.mjs",
     "build:all": "pnpm -r --filter \"!@workspace/mockup-sandbox\" --if-present run build",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "seed": "pnpm --filter @workspace/scripts run seed",
+    "seed:migrate": "pnpm --filter @workspace/scripts run migrate:stage-updates"
   },
   "private": true,
   "dependencies": {

@@ -1,22 +1,50 @@
-import { getAuth } from "@clerk/express";
+﻿import { getAuth } from "@clerk/express";
 import OpenAI from "openai";
 import { Router, type NextFunction, type Request, type Response } from "express";
 import type {
-  AssessmentGenerationRequest,
-  AssessmentGenerationRequestAssessmentType,
+  AssessmentGenerateRequest,
+  AssessmentGenerateRequestAssessmentType,
   AssessmentGenerationResponse,
-  AssessmentQuestion,
-  MatchAnalysisRequest,
-  MatchAnalysisResponse,
+  AssessmentQuestionClient,
 } from "@workspace/api-zod";
 import {
   generateDynamicAssessment,
   generateDynamicMatchAnalysis,
   evaluateAssessment,
-} from "../lib/assessmentEngine";
+  ServerAssessmentQuestion } from "../lib/assessmentEngine";
 
 const router = Router();
 const requestWindowMs = 60_000;
+
+// Local types for the legacy /talentiq/match-analysis route
+// (MatchAnalysis* types were removed from the shared spec; this route is kept
+// for backwards compatibility and mirrors the match breakdown shape.)
+interface LocalMatchAnalysisRequest {
+  candidateName: string;
+  yearsExperience: number;
+  candidateSkills: string[];
+  jobTitle: string;
+  company: string;
+  description: string;
+  requiredSkills: string[];
+}
+interface LocalMatchAnalysisResponse {
+  matchScore: number;
+  skillMatch: number;
+  experienceMatch: number;
+  roleFit: number;
+  strengths: string[];
+  missingSkills: string[];
+  recommendation: string;
+}
+
+interface LocalAssessmentGenerateRequest {
+  jobTitle: string;
+  requiredSkills: string[];
+  assessmentType: "MCQ" | "APTITUDE";
+  questionCount: number;
+}
+
 const requestLimit = 60; // generous limit for interactive practice
 const requestCounts = new Map<string, { count: number; resetAt: number }>();
 const xkiroBaseUrl = "https://api.xkiro.com/v1";
@@ -71,7 +99,7 @@ function requireSignedIn(req: Request, res: Response, next: NextFunction) {
     return;
   }
   if (current.count >= requestLimit) {
-    sendError(res, 429, "You’ve reached the short-term AI request limit. Try again in a minute.");
+    sendError(res, 429, "Youâ€™ve reached the short-term AI request limit. Try again in a minute.");
     return;
   }
   current.count += 1;
@@ -102,7 +130,7 @@ function boundedScore(value: unknown): number | null {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
-function parseMatchResult(value: unknown): MatchAnalysisResponse | null {
+function parseMatchResult(value: unknown): LocalMatchAnalysisResponse | null {
   if (!isObject(value)) return null;
   const matchScore = boundedScore(value.matchScore);
   const skillMatch = boundedScore(value.skillMatch);
@@ -131,7 +159,7 @@ function parseMatchResult(value: unknown): MatchAnalysisResponse | null {
   };
 }
 
-function isQuestionDifficulty(value: unknown): value is AssessmentQuestion["difficulty"] {
+function isQuestionDifficulty(value: unknown): value is AssessmentQuestionClient["difficulty"] {
   return value === "Easy" || value === "Medium" || value === "Hard";
 }
 
@@ -141,7 +169,7 @@ function parseAssessment(
 ): AssessmentGenerationResponse | null {
   if (!isObject(value) || !Array.isArray(value.questions)) return null;
   if (value.questions.length !== questionCount) return null;
-  const questions: AssessmentQuestion[] = [];
+  const questions: ServerAssessmentQuestion[] = [];
 
   for (const question of value.questions) {
     if (
@@ -163,6 +191,7 @@ function parseAssessment(
       return null;
     }
     questions.push({
+      id: questions.length,
       prompt: question.prompt.trim().slice(0, 700),
       options,
       correctAnswer: question.correctAnswer,
@@ -178,10 +207,15 @@ function parseAssessment(
       ? Math.max(5, Math.min(60, Math.round(value.durationMinutes)))
       : 15;
 
-  return { title, durationMinutes, questions };
+  return {
+    id: String(Date.now()),
+    title,
+    durationMinutes,
+    questions: questions as AssessmentQuestionClient[],
+  };
 }
 
-function parseMatchRequest(body: unknown): MatchAnalysisRequest | null {
+function parseMatchRequest(body: unknown): LocalMatchAnalysisRequest | null {
   if (!isObject(body)) return null;
   if (
     typeof body.candidateName !== "string" ||
@@ -223,11 +257,11 @@ function parseMatchRequest(body: unknown): MatchAnalysisRequest | null {
   };
 }
 
-function isAssessmentType(value: unknown): value is AssessmentGenerationRequestAssessmentType {
+function isAssessmentType(value: unknown): value is AssessmentGenerateRequestAssessmentType {
   return value === "MCQ" || value === "APTITUDE";
 }
 
-function parseAssessmentRequest(body: unknown): AssessmentGenerationRequest | null {
+function parseAssessmentRequest(body: unknown): LocalAssessmentGenerateRequest | null {
   if (!isObject(body) || !Array.isArray(body.requiredSkills)) return null;
   if (
     typeof body.jobTitle !== "string" ||
@@ -271,7 +305,7 @@ async function requestJson(
   return JSON.parse(content) as unknown;
 }
 
-// ─── Match Analysis Route ────────────────────────────────────────────────────
+// â”€â”€â”€ Match Analysis Route â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 router.post("/talentiq/match-analysis", requireSignedIn, async (req, res) => {
   const request = parseMatchRequest(req.body);
@@ -313,7 +347,7 @@ router.post("/talentiq/match-analysis", requireSignedIn, async (req, res) => {
         return;
       }
     } catch (error) {
-      req.log.warn({ error }, "OpenAI match analysis call failed; using smart fallback engine.");
+      (req as any).log.warn({ error }, "OpenAI match analysis call failed; using smart fallback engine.");
     }
   }
 
@@ -322,7 +356,7 @@ router.post("/talentiq/match-analysis", requireSignedIn, async (req, res) => {
   res.json(fallbackResponse);
 });
 
-// ─── Assessment Generation Route ─────────────────────────────────────────────
+// â”€â”€â”€ Assessment Generation Route â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 router.post("/talentiq/assessments/generate", requireSignedIn, async (req, res) => {
   const request = parseAssessmentRequest(req.body);
@@ -360,7 +394,7 @@ router.post("/talentiq/assessments/generate", requireSignedIn, async (req, res) 
         return;
       }
     } catch (error) {
-      req.log.warn({ error }, "OpenAI assessment call failed; using smart fallback engine.");
+      (req as any).log.warn({ error }, "OpenAI assessment call failed; using smart fallback engine.");
     }
   }
 
@@ -374,7 +408,7 @@ router.post("/talentiq/assessments/generate", requireSignedIn, async (req, res) 
   res.json(fallbackAssessment);
 });
 
-// ─── Assessment Evaluation Route ─────────────────────────────────────────────
+// â”€â”€â”€ Assessment Evaluation Route â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 router.post("/talentiq/assessments/evaluate", requireSignedIn, async (req, res) => {
   const body = req.body as Record<string, unknown>;
@@ -409,7 +443,7 @@ router.post("/talentiq/assessments/evaluate", requireSignedIn, async (req, res) 
   const identityPledgeSigned = body.identityPledgeSigned !== false;
 
   const evaluation = evaluateAssessment(
-    body.questions as AssessmentQuestion[],
+    body.questions as ServerAssessmentQuestion[],
     body.userAnswers as Record<number, string>,
     focusLosses,
     timeSpentSeconds,
@@ -423,3 +457,4 @@ router.post("/talentiq/assessments/evaluate", requireSignedIn, async (req, res) 
 });
 
 export default router;
+

@@ -7,7 +7,10 @@
     "dev": "cross-env NODE_ENV=development tsx watch src/index.ts",
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run src/lib --reporter=verbose",
+    "test:integration": "vitest run src/routes/integration.test.ts --reporter=verbose --hookTimeout=180000"
   },
   "dependencies": {
     "@clerk/express": "^2.1.78",
@@ -18,26 +21,34 @@
     "cors": "^2.8.6",
     "dotenv": "^16.4.5",
     "express": "^5.2.1",
+    "express-rate-limit": "^7.4.0",
+    "helmet": "^8.0.0",
     "http-proxy-middleware": "^4.2.0",
     "multer": "^2.0.1",
     "openai": "^7.32.0",
-    "pino": "^9.14.0",
-    "pino-http": "^10.5.0",
-    "pdf-parse": "^1.1.1"
+    "pdf-parse": "^1.1.1",
+    "pino": "^10.4.0",
+    "pino-http": "^11.0.0",
+    "zod": "catalog:"
   },
   "devDependencies": {
+    "@rollup/rollup-win32-x64-msvc": "^4.67.4",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/multer": "^1.4.12",
     "@types/node": "catalog:",
     "@types/pdf-parse": "^1.1.4",
+    "@types/supertest": "^7.2.1",
     "cross-env": "^7.0.3",
     "esbuild": "0.28.2",
     "esbuild-plugin-pino": "^2.3.3",
+    "mongodb-memory-server": "^11.3.0",
     "pino-pretty": "^13.1.3",
+    "supertest": "^7.3.1",
     "thread-stream": "3.1.0",
     "tsx": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "^5.1.0"
   }
 }
