@@ -29752,37 +29752,32 @@ __export(src_exports, {
 import mongoose2 from "mongoose";
 async function connectDB() {
   if (isConnected) return;
-  const uri = process.env.MONGODB_URI || DEFAULT_ATLAS_URI;
+  const uri = process.env.DATABASE_URL || process.env.MONGODB_URI;
+  if (!uri) {
+    throw new Error(
+      "DATABASE_URL (or MONGODB_URI) is required to connect to MongoDB"
+    );
+  }
   try {
-    console.log("Connecting to MongoDB Atlas...");
+    console.log("Connecting to MongoDB...");
     await mongoose2.connect(uri, {
       dbName: "talentiq",
       serverSelectionTimeoutMS: 15e3
     });
     isConnected = true;
-    console.log("\u2705 Connected to MongoDB Atlas successfully");
+    console.log("Connected to MongoDB successfully");
   } catch (err) {
     console.warn(
-      `\u26A0\uFE0F MongoDB Atlas connection attempt failed: ${err?.message || err}
-Checking local MongoDB (mongodb://127.0.0.1:27017/talentiq)...`
+      `MongoDB connection attempt failed: ${err?.message || err}`
     );
-    try {
-      await mongoose2.connect("mongodb://127.0.0.1:27017/talentiq", {
-        serverSelectionTimeoutMS: 5e3
-      });
-      isConnected = true;
-      console.log("\u2705 Successfully connected to local MongoDB fallback!");
-    } catch (localErr) {
-      throw err;
-    }
+    throw err;
   }
 }
-var DEFAULT_ATLAS_URI, isConnected;
+var isConnected;
 var init_src = __esm({
   "../../lib/db/src/index.ts"() {
     "use strict";
     init_schema();
-    DEFAULT_ATLAS_URI = "mongodb+srv://jagathraj0k7_db_user:jagathdb26@cluster0.qfcx2z1.mongodb.net/talentiq?appName=Cluster0";
     isConnected = false;
   }
 });

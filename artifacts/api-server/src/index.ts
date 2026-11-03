@@ -5,6 +5,12 @@ import { loadEnv } from "./lib/env";
 import { dbState } from "./lib/dbStatus";
 import { connectDB } from "@workspace/db";
 
+// Coalesce MONGODB_URI -> DATABASE_URL so both env validation and connectDB
+// see a single canonical value. process.env is mutable at startup.
+if (!process.env.DATABASE_URL && process.env.MONGODB_URI) {
+  process.env.DATABASE_URL = process.env.MONGODB_URI;
+}
+
 const env = loadEnv();
 
 async function connectWithRetry(retries = 10, delayMs = 3000): Promise<void> {
