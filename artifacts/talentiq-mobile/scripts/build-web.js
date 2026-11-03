@@ -31,6 +31,8 @@ console.log('✅ Created dist/404.html (Vercel SPA fallback)');
 // 2. Create static route files for all client-side routes
 const routes = [
   'auth/callback',
+  'sign-in',
+  'sign-up',
   'jobs',
   'profile',
   'assessment',
