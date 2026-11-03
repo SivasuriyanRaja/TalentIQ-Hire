@@ -1,23 +1,41 @@
 services:
   - type: web
     name: talentiq-api
-    runtime: node
-    plan: free
+    env: node
+    plan: starter
     region: oregon
-    branch: main
-    buildCommand: pnpm install --frozen-lockfile && pnpm run build:api
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @workspace/api-server run build
     startCommand: pnpm run start:api
-    healthCheckPath: /api/health
+    healthCheckPath: /api/healthz
     envVars:
       - key: NODE_ENV
         value: production
-      - key: NODE_VERSION
-        value: 20
-      - key: MONGODB_URI
+        sync: false
+      - key: PORT
+        value: 10000
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: OPENAI_API_KEY
         sync: false
       - key: CLERK_PUBLISHABLE_KEY
         sync: false
       - key: CLERK_SECRET_KEY
         sync: false
-      - key: OPENAI_API_KEY
+      - key: CORS_ORIGINS
         sync: false
+      - key: ALLOW_DEV_AUTH
+        value: "false"
+        sync: false
+      - key: UPLOADS_DIR
+        value: /var/data/uploads/resumes
+        sync: false
+      - key: LOG_LEVEL
+        value: info
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+    # NOTE: Render's free-tier disk is ephemeral. For resume uploads to persist
+    # across deploys/restarts, add a persistent disk under the "Disks" tab in the
+    # Render dashboard and mount it at /var/data (matching UPLOADS_DIR above).
+    # Without a disk, uploaded resumes are lost on every redeploy/restart.

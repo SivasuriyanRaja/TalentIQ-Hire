@@ -1,31 +1,38 @@
 import "dotenv/config";
 import app from "./app";
 import { logger } from "./lib/logger";
+import { loadEnv } from "./lib/env";
+import { dbState } from "./lib/dbStatus";
 import { connectDB } from "@workspace/db";
 
-const rawPort = process.env["PORT"] || "5000";
+const env = loadEnv();
 
-const port = Number(rawPort);
-
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
+async function connectWithRetry(retries = 10, delayMs = 3000): Promise<void> {
+  let lastErr: unknown;
+  for (let i = 0; i < retries; i++) {
+    try {
+      await connectDB();
+      dbState.status = "up";
+      logger.info("MongoDB connected successfully");
+      return;
+    } catch (err) {
+      lastErr = err;
+      logger.warn(
+        { attempt: i + 1, retries },
+        "MongoDB connect attempt failed, retrying...",
+      );
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  logger.error(
+    { err: String(lastErr) },
+    "MongoDB connection failed after retries",
+  );
+  dbState.status = "down";
 }
 
-app.listen(port, "0.0.0.0", (err?: Error) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
-  }
-  logger.info({ port }, `Server listening on 0.0.0.0:${port}`);
-
-  connectDB()
-    .then(() => {
-      logger.info("MongoDB connected successfully");
-    })
-    .catch((err) => {
-      logger.error(
-        { err: err?.message || err },
-        "Failed to connect to MongoDB. (Ensure your IP is whitelisted in MongoDB Atlas Network Access: 0.0.0.0/0)"
-      );
-    });
+const server = app.listen(env.PORT, "0.0.0.0", () => {
+  logger.info({ port: env.PORT }, `Server listening on 0.0.0.0:${env.PORT}`);
 });
+
+connectWithRetry();

@@ -90,7 +90,7 @@ export function sseHandler(_req: Request, res: Response): void {
     if (!closed) {
       try { (res as any).write(": heartbeat\n\n"); } catch { close(); }
     }
-  }, 15000);
+  }, 25000);
 
   const unsubscribe = subscribe(channel, (envelope) => {
     if (closed) return;

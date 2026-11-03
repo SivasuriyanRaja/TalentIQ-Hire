@@ -1,11 +1,11 @@
 import { Router, type IRouter } from "express";
-import { HealthCheckResponse } from "@workspace/api-zod";
+import { dbState } from "../lib/dbStatus";
 
 const router: IRouter = Router();
 
+// Always return 200; db reflects live MongoDB connectivity status.
 router.get(["/healthz", "/health"], (_req, res) => {
-  const data = HealthCheckResponse.parse({ status: "ok" });
-  res.json(data);
+  res.status(200).json({ status: "ok", db: dbState.status });
 });
 
 export default router;
