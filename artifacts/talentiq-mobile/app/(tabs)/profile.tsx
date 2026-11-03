@@ -37,7 +37,6 @@ export default function ProfileScreen() {
   const colors = useColors();
   const router = useRouter();
   const { isSignedIn } = useAuth();
-  const { signOut } = useClerk();
   const { user } = useUser();
   const {
     role,

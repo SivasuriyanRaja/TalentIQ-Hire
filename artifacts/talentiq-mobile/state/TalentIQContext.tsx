@@ -21,6 +21,7 @@ import React, {
   useState,
 } from 'react';
 import { useAuth, useClerk } from '@/lib/authBridge';
+import { getApiEndpoint } from '@/utils/apiConfig';
 import { useRouter } from 'expo-router';
 import {
   Application,
@@ -186,7 +187,7 @@ export function TalentIQProvider({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const { userId, isSignedIn, isLoaded: authLoaded } = useAuth();
+  const { userId, isSignedIn, isLoaded: authLoaded, getToken } = useAuth();
   const { signOut: clerkSignOut } = useClerk();
 
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
@@ -772,6 +773,20 @@ export function TalentIQProvider({
   );
 
   const logout = useCallback(async () => {
+    let token: string | null = null;
+    try {
+      token = await getToken?.();
+    } catch {}
+
+    try {
+      if (token) {
+        await fetch(getApiEndpoint('/auth/logout'), {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
+    } catch {}
+
     try {
       if (isSignedIn) {
         await clerkSignOut();
@@ -792,8 +807,8 @@ export function TalentIQProvider({
     setAuthMode('unauthenticated');
     setState(defaultState);
 
-    router.replace('/');
-  }, [isSignedIn, clerkSignOut, router]);
+    router.replace('/(auth)/sign-in');
+  }, [isSignedIn, clerkSignOut, router, getToken]);
 
   // ── Core Workspace Actions ────────────────────────────────────────────────
 
