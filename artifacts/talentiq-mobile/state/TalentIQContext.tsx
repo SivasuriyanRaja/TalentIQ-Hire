@@ -35,7 +35,6 @@ import {
   WorldRegion,
 } from '@/data/talentiq';
 import { useCloudSync } from '@/hooks/useCloudSync';
-import { getApiEndpoint } from '@/utils/apiConfig';
 
 export interface AuthUser {
   id: string;

@@ -6,10 +6,15 @@ const projectRoot = path.resolve(__dirname, '..');
 const distDir = path.join(projectRoot, 'dist');
 
 console.log('📦 Step 1: Exporting Expo Web application...');
-execSync('pnpm exec expo export --platform web', {
-  cwd: projectRoot,
-  stdio: 'inherit',
-});
+try {
+  execSync('pnpm exec expo export --platform web', {
+    cwd: projectRoot,
+    stdio: 'inherit',
+  });
+} catch (err) {
+  console.error('❌ Expo web export failed:', err.message);
+  process.exit(1);
+}
 
 if (!fs.existsSync(distDir)) {
   console.error('❌ dist directory was not created!');
