@@ -614,7 +614,7 @@ router.get("/recruiter/stats", requireRole("recruiter"), async (req, res) => {
 
   const jobIds = (
     await Job.find({ postedBy: userId }).distinct("_id")
-  ).map((id) => new mongoose.Types.ObjectId(id as string));
+  ).map((id) => String(id));
   const flaggedAttempts =
     jobIds.length > 0
       ? await AssessmentAttempt.countDocuments({

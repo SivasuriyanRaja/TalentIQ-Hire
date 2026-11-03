@@ -29,7 +29,8 @@
     "pdf-parse": "^1.1.1",
     "pino": "^10.4.0",
     "pino-http": "^11.0.0",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "mongoose": "^8.8.0"
   },
   "devDependencies": {
     "@rollup/rollup-win32-x64-msvc": "^4.67.4",

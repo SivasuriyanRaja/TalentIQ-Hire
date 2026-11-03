@@ -21,9 +21,9 @@ var __commonJS = (cb, mod) => function __require2() {
   }
 };
 
-// node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/lib/err-helpers.js
+// ../../node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/lib/err-helpers.js
 var require_err_helpers = __commonJS({
-  "node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/lib/err-helpers.js"(exports, module) {
+  "../../node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/lib/err-helpers.js"(exports, module) {
     "use strict";
     var isErrorLike = (err) => {
       return err && typeof err.message === "string";
@@ -78,9 +78,9 @@ var require_err_helpers = __commonJS({
   }
 });
 
-// node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/lib/err-proto.js
+// ../../node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/lib/err-proto.js
 var require_err_proto = __commonJS({
-  "node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/lib/err-proto.js"(exports, module) {
+  "../../node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/lib/err-proto.js"(exports, module) {
     "use strict";
     var seen = /* @__PURE__ */ Symbol("circular-ref-tag");
     var rawSymbol = /* @__PURE__ */ Symbol("pino-raw-err-ref");
@@ -129,9 +129,9 @@ var require_err_proto = __commonJS({
   }
 });
 
-// node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/lib/err.js
+// ../../node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/lib/err.js
 var require_err = __commonJS({
-  "node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/lib/err.js"(exports, module) {
+  "../../node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/lib/err.js"(exports, module) {
     "use strict";
     module.exports = errSerializer;
     var { messageWithCauses, stackWithCauses, isErrorLike } = require_err_helpers();
@@ -169,9 +169,9 @@ var require_err = __commonJS({
   }
 });
 
-// node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/lib/err-with-cause.js
+// ../../node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/lib/err-with-cause.js
 var require_err_with_cause = __commonJS({
-  "node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/lib/err-with-cause.js"(exports, module) {
+  "../../node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/lib/err-with-cause.js"(exports, module) {
     "use strict";
     module.exports = errWithCauseSerializer;
     var { isErrorLike } = require_err_helpers();
@@ -212,9 +212,9 @@ var require_err_with_cause = __commonJS({
   }
 });
 
-// node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/lib/req.js
+// ../../node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/lib/req.js
 var require_req = __commonJS({
-  "node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/lib/req.js"(exports, module) {
+  "../../node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/lib/req.js"(exports, module) {
     "use strict";
     module.exports = {
       mapHttpRequest,
@@ -307,9 +307,9 @@ var require_req = __commonJS({
   }
 });
 
-// node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/lib/res.js
+// ../../node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/lib/res.js
 var require_res = __commonJS({
-  "node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/lib/res.js"(exports, module) {
+  "../../node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/lib/res.js"(exports, module) {
     "use strict";
     module.exports = {
       mapHttpResponse,
@@ -356,9 +356,9 @@ var require_res = __commonJS({
   }
 });
 
-// node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/index.js
+// ../../node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/index.js
 var require_pino_std_serializers = __commonJS({
-  "node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/index.js"(exports, module) {
+  "../../node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/index.js"(exports, module) {
     "use strict";
     var errSerializer = require_err();
     var errWithCauseSerializer = require_err_with_cause();
@@ -393,14 +393,19 @@ var require_pino_std_serializers = __commonJS({
   }
 });
 
-// node_modules/.pnpm/pino@9.14.0/node_modules/pino/lib/caller.js
+// ../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/lib/caller.js
 var require_caller = __commonJS({
-  "node_modules/.pnpm/pino@9.14.0/node_modules/pino/lib/caller.js"(exports, module) {
+  "../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/lib/caller.js"(exports, module) {
     "use strict";
+    var util = __require("node:util");
+    var getCallSites = util.getCallSites ?? util.getCallSite;
     function noOpPrepareStackTrace(_, stack) {
       return stack;
     }
     module.exports = function getCallers() {
+      if (getCallSites) {
+        return getCallSites().slice(2).map((callSite) => callSite.scriptName);
+      }
       const originalPrepare = Error.prepareStackTrace;
       Error.prepareStackTrace = noOpPrepareStackTrace;
       const stack = new Error().stack;
@@ -421,9 +426,9 @@ var require_caller = __commonJS({
   }
 });
 
-// node_modules/.pnpm/@pinojs+redact@0.4.0/node_modules/@pinojs/redact/index.js
+// ../../node_modules/.pnpm/@pinojs+redact@0.4.0/node_modules/@pinojs/redact/index.js
 var require_redact = __commonJS({
-  "node_modules/.pnpm/@pinojs+redact@0.4.0/node_modules/@pinojs/redact/index.js"(exports, module) {
+  "../../node_modules/.pnpm/@pinojs+redact@0.4.0/node_modules/@pinojs/redact/index.js"(exports, module) {
     "use strict";
     function deepClone(obj) {
       if (obj === null || typeof obj !== "object") {
@@ -854,9 +859,9 @@ var require_redact = __commonJS({
   }
 });
 
-// node_modules/.pnpm/pino@9.14.0/node_modules/pino/lib/symbols.js
+// ../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/lib/symbols.js
 var require_symbols = __commonJS({
-  "node_modules/.pnpm/pino@9.14.0/node_modules/pino/lib/symbols.js"(exports, module) {
+  "../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/lib/symbols.js"(exports, module) {
     "use strict";
     var setLevelSym = /* @__PURE__ */ Symbol("pino.setLevel");
     var getLevelSym = /* @__PURE__ */ Symbol("pino.getLevel");
@@ -889,6 +894,7 @@ var require_symbols = __commonJS({
     var formattersSym = /* @__PURE__ */ Symbol.for("pino.formatters");
     var hooksSym = /* @__PURE__ */ Symbol.for("pino.hooks");
     var needsMetadataGsym = /* @__PURE__ */ Symbol.for("pino.metadata");
+    var transportUsesMultistreamSym = /* @__PURE__ */ Symbol.for("pino.transport.usesMultistream");
     module.exports = {
       setLevelSym,
       getLevelSym,
@@ -920,14 +926,15 @@ var require_symbols = __commonJS({
       hooksSym,
       nestedKeyStrSym,
       mixinMergeStrategySym,
-      msgPrefixSym
+      msgPrefixSym,
+      transportUsesMultistreamSym
     };
   }
 });
 
-// node_modules/.pnpm/pino@9.14.0/node_modules/pino/lib/redaction.js
+// ../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/lib/redaction.js
 var require_redaction = __commonJS({
-  "node_modules/.pnpm/pino@9.14.0/node_modules/pino/lib/redaction.js"(exports, module) {
+  "../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/lib/redaction.js"(exports, module) {
     "use strict";
     var Redact = require_redact();
     var { redactFmtSym, wildcardFirstSym } = require_symbols();
@@ -966,10 +973,10 @@ var require_redaction = __commonJS({
         }
         o[ns].push(nextPath);
         return o;
-      }, {});
-      const result = {
+      }, /* @__PURE__ */ Object.create(null));
+      const result = Object.assign(/* @__PURE__ */ Object.create(null), {
         [redactFmtSym]: Redact({ paths, censor, serialize, strict, remove })
-      };
+      });
       const topCensor = (...args) => {
         return typeof censor === "function" ? serialize(censor(...args)) : serialize(censor);
       };
@@ -1007,9 +1014,9 @@ var require_redaction = __commonJS({
   }
 });
 
-// node_modules/.pnpm/pino@9.14.0/node_modules/pino/lib/time.js
+// ../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/lib/time.js
 var require_time = __commonJS({
-  "node_modules/.pnpm/pino@9.14.0/node_modules/pino/lib/time.js"(exports, module) {
+  "../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/lib/time.js"(exports, module) {
     "use strict";
     var nullTime = () => "";
     var epochTime = () => `,"time":${Date.now()}`;
@@ -1038,9 +1045,9 @@ var require_time = __commonJS({
   }
 });
 
-// node_modules/.pnpm/quick-format-unescaped@4.0.4/node_modules/quick-format-unescaped/index.js
+// ../../node_modules/.pnpm/quick-format-unescaped@4.0.4/node_modules/quick-format-unescaped/index.js
 var require_quick_format_unescaped = __commonJS({
-  "node_modules/.pnpm/quick-format-unescaped@4.0.4/node_modules/quick-format-unescaped/index.js"(exports, module) {
+  "../../node_modules/.pnpm/quick-format-unescaped@4.0.4/node_modules/quick-format-unescaped/index.js"(exports, module) {
     "use strict";
     function tryStringify(o) {
       try {
@@ -1157,9 +1164,9 @@ var require_quick_format_unescaped = __commonJS({
   }
 });
 
-// node_modules/.pnpm/atomic-sleep@1.0.0/node_modules/atomic-sleep/index.js
+// ../../node_modules/.pnpm/atomic-sleep@1.0.0/node_modules/atomic-sleep/index.js
 var require_atomic_sleep = __commonJS({
-  "node_modules/.pnpm/atomic-sleep@1.0.0/node_modules/atomic-sleep/index.js"(exports, module) {
+  "../../node_modules/.pnpm/atomic-sleep@1.0.0/node_modules/atomic-sleep/index.js"(exports, module) {
     "use strict";
     if (typeof SharedArrayBuffer !== "undefined" && typeof Atomics !== "undefined") {
       let sleep = function(ms) {
@@ -1192,9 +1199,9 @@ var require_atomic_sleep = __commonJS({
   }
 });
 
-// node_modules/.pnpm/sonic-boom@4.2.1/node_modules/sonic-boom/index.js
+// ../../node_modules/.pnpm/sonic-boom@4.2.1/node_modules/sonic-boom/index.js
 var require_sonic_boom = __commonJS({
-  "node_modules/.pnpm/sonic-boom@4.2.1/node_modules/sonic-boom/index.js"(exports, module) {
+  "../../node_modules/.pnpm/sonic-boom@4.2.1/node_modules/sonic-boom/index.js"(exports, module) {
     "use strict";
     var fs = __require("fs");
     var EventEmitter = __require("events");
@@ -1779,9 +1786,9 @@ var require_sonic_boom = __commonJS({
   }
 });
 
-// node_modules/.pnpm/on-exit-leak-free@2.1.2/node_modules/on-exit-leak-free/index.js
+// ../../node_modules/.pnpm/on-exit-leak-free@2.1.2/node_modules/on-exit-leak-free/index.js
 var require_on_exit_leak_free = __commonJS({
-  "node_modules/.pnpm/on-exit-leak-free@2.1.2/node_modules/on-exit-leak-free/index.js"(exports, module) {
+  "../../node_modules/.pnpm/on-exit-leak-free@2.1.2/node_modules/on-exit-leak-free/index.js"(exports, module) {
     "use strict";
     var refs = {
       exit: [],
@@ -1873,48 +1880,46 @@ var require_on_exit_leak_free = __commonJS({
   }
 });
 
-// node_modules/.pnpm/thread-stream@3.1.0/node_modules/thread-stream/package.json
+// ../../node_modules/.pnpm/thread-stream@4.2.1/node_modules/thread-stream/package.json
 var require_package = __commonJS({
-  "node_modules/.pnpm/thread-stream@3.1.0/node_modules/thread-stream/package.json"(exports, module) {
+  "../../node_modules/.pnpm/thread-stream@4.2.1/node_modules/thread-stream/package.json"(exports, module) {
     module.exports = {
       name: "thread-stream",
-      version: "3.1.0",
+      version: "4.2.1",
       description: "A streaming way to send data to a Node.js Worker Thread",
       main: "index.js",
       types: "index.d.ts",
+      engines: {
+        node: ">=20"
+      },
       dependencies: {
-        "real-require": "^0.2.0"
+        "real-require": "^1.0.0"
       },
       devDependencies: {
-        "@types/node": "^20.1.0",
-        "@types/tap": "^15.0.0",
-        "@yao-pkg/pkg": "^5.11.5",
+        "@types/node": "^26.1.1",
+        "@yao-pkg/pkg": "^6.0.0",
+        borp: "^1.0.0",
         desm: "^1.3.0",
+        eslint: "^9.39.1",
         fastbench: "^1.0.1",
-        husky: "^9.0.6",
-        "pino-elasticsearch": "^8.0.0",
-        "sonic-boom": "^4.0.1",
-        standard: "^17.0.0",
-        tap: "^16.2.0",
+        neostandard: "^0.13.0",
+        "pino-elasticsearch": "^9.0.0",
+        "sonic-boom": "^5.0.0",
         "ts-node": "^10.8.0",
-        typescript: "^5.3.2",
-        "why-is-node-running": "^2.2.2"
+        tsd: "^0.33.0",
+        typescript: "~5.7.3"
       },
       scripts: {
         build: "tsc --noEmit",
-        test: 'standard && npm run build && npm run transpile && tap "test/**/*.test.*js" && tap --ts test/*.test.*ts',
-        "test:ci": "standard && npm run transpile && npm run test:ci:js && npm run test:ci:ts",
-        "test:ci:js": 'tap --no-check-coverage --timeout=120 --coverage-report=lcovonly "test/**/*.test.*js"',
-        "test:ci:ts": 'tap --ts --no-check-coverage --coverage-report=lcovonly "test/**/*.test.*ts"',
-        "test:yarn": 'npm run transpile && tap "test/**/*.test.js" --no-check-coverage',
-        transpile: "sh ./test/ts/transpile.sh",
-        prepare: "husky install"
+        lint: "eslint",
+        test: 'npm run lint && npm run build && npm run test:types && npm run transpile && borp --expose-gc --pattern "test/*.test.{js,mjs}"',
+        "test:ci": 'npm run lint && npm run test:types && npm run transpile && borp --expose-gc --pattern "test/*.test.{js,mjs}"',
+        "test:types": "tsd",
+        "test:yarn": 'npm run transpile && borp --expose-gc --pattern "test/*.test.js"',
+        transpile: "sh ./test/ts/transpile.sh"
       },
-      standard: {
-        ignore: [
-          "test/ts/**/*",
-          "test/syntax-error.mjs"
-        ]
+      tsd: {
+        directory: "test/types"
       },
       repository: {
         type: "git",
@@ -1936,80 +1941,94 @@ var require_package = __commonJS({
   }
 });
 
-// node_modules/.pnpm/thread-stream@3.1.0/node_modules/thread-stream/lib/wait.js
+// ../../node_modules/.pnpm/thread-stream@4.2.1/node_modules/thread-stream/lib/wait.js
 var require_wait = __commonJS({
-  "node_modules/.pnpm/thread-stream@3.1.0/node_modules/thread-stream/lib/wait.js"(exports, module) {
+  "../../node_modules/.pnpm/thread-stream@4.2.1/node_modules/thread-stream/lib/wait.js"(exports, module) {
     "use strict";
-    var MAX_TIMEOUT = 1e3;
+    var WAIT_MS = 1e4;
     function wait(state, index, expected, timeout, done) {
-      const max = Date.now() + timeout;
-      let current = Atomics.load(state, index);
-      if (current === expected) {
-        done(null, "ok");
-        return;
-      }
-      let prior = current;
-      const check = (backoff) => {
-        if (Date.now() > max) {
+      const max = timeout === Infinity ? Infinity : Date.now() + timeout;
+      const check = (previous) => {
+        const current = Atomics.load(state, index);
+        if (current >= expected) {
+          done(null, "ok");
+          return;
+        }
+        if (previous !== void 0 && current !== previous) {
+          done(null, "not-equal");
+          return;
+        }
+        if (max !== Infinity && Date.now() > max) {
           done(null, "timed-out");
-        } else {
-          setTimeout(() => {
-            prior = current;
-            current = Atomics.load(state, index);
-            if (current === prior) {
-              check(backoff >= MAX_TIMEOUT ? MAX_TIMEOUT : backoff * 2);
-            } else {
-              if (current === expected) done(null, "ok");
-              else done(null, "not-equal");
+          return;
+        }
+        const remaining = max === Infinity ? WAIT_MS : Math.min(WAIT_MS, Math.max(1, max - Date.now()));
+        const result = Atomics.waitAsync(state, index, current, remaining);
+        if (result.async) {
+          result.value.then((res) => {
+            if (res === "ok") {
+              const latest = Atomics.load(state, index);
+              done(null, latest >= expected ? "ok" : "not-equal");
+              return;
             }
-          }, backoff);
+            check(current);
+          });
+        } else {
+          setImmediate(done, null, "not-equal");
         }
       };
-      check(1);
+      check();
     }
     function waitDiff(state, index, expected, timeout, done) {
-      const max = Date.now() + timeout;
-      let current = Atomics.load(state, index);
-      if (current !== expected) {
-        done(null, "ok");
-        return;
-      }
-      const check = (backoff) => {
-        if (Date.now() > max) {
+      const max = timeout === Infinity ? Infinity : Date.now() + timeout;
+      const check = () => {
+        const current = Atomics.load(state, index);
+        if (current !== expected) {
+          done(null, "ok");
+          return;
+        }
+        if (max !== Infinity && Date.now() > max) {
           done(null, "timed-out");
-        } else {
-          setTimeout(() => {
-            current = Atomics.load(state, index);
-            if (current !== expected) {
+          return;
+        }
+        const remaining = max === Infinity ? WAIT_MS : Math.min(WAIT_MS, Math.max(1, max - Date.now()));
+        const result = Atomics.waitAsync(state, index, expected, remaining);
+        if (result.async) {
+          result.value.then((res) => {
+            if (res === "ok") {
               done(null, "ok");
-            } else {
-              check(backoff >= MAX_TIMEOUT ? MAX_TIMEOUT : backoff * 2);
+              return;
             }
-          }, backoff);
+            check();
+          });
+        } else {
+          setImmediate(check);
         }
       };
-      check(1);
+      check();
     }
     module.exports = { wait, waitDiff };
   }
 });
 
-// node_modules/.pnpm/thread-stream@3.1.0/node_modules/thread-stream/lib/indexes.js
+// ../../node_modules/.pnpm/thread-stream@4.2.1/node_modules/thread-stream/lib/indexes.js
 var require_indexes = __commonJS({
-  "node_modules/.pnpm/thread-stream@3.1.0/node_modules/thread-stream/lib/indexes.js"(exports, module) {
+  "../../node_modules/.pnpm/thread-stream@4.2.1/node_modules/thread-stream/lib/indexes.js"(exports, module) {
     "use strict";
+    var SEQ_INDEX = 2;
     var WRITE_INDEX = 4;
     var READ_INDEX = 8;
     module.exports = {
       WRITE_INDEX,
-      READ_INDEX
+      READ_INDEX,
+      SEQ_INDEX
     };
   }
 });
 
-// node_modules/.pnpm/thread-stream@3.1.0/node_modules/thread-stream/index.js
+// ../../node_modules/.pnpm/thread-stream@4.2.1/node_modules/thread-stream/index.js
 var require_thread_stream = __commonJS({
-  "node_modules/.pnpm/thread-stream@3.1.0/node_modules/thread-stream/index.js"(exports, module) {
+  "../../node_modules/.pnpm/thread-stream@4.2.1/node_modules/thread-stream/index.js"(exports, module) {
     "use strict";
     var { version } = require_package();
     var { EventEmitter } = __require("events");
@@ -2019,12 +2038,28 @@ var require_thread_stream = __commonJS({
     var { wait } = require_wait();
     var {
       WRITE_INDEX,
-      READ_INDEX
+      READ_INDEX,
+      SEQ_INDEX
     } = require_indexes();
     var buffer = __require("buffer");
     var assert = __require("assert");
     var kImpl = /* @__PURE__ */ Symbol("kImpl");
     var MAX_STRING = buffer.constants.MAX_STRING_LENGTH;
+    function noop() {
+    }
+    function updateState(stream, fn) {
+      Atomics.add(stream[kImpl].state, SEQ_INDEX, 1);
+      fn();
+      Atomics.add(stream[kImpl].state, SEQ_INDEX, 1);
+      Atomics.notify(stream[kImpl].state, SEQ_INDEX);
+    }
+    function resetIndexes(stream) {
+      updateState(stream, () => {
+        Atomics.store(stream[kImpl].state, READ_INDEX, 0);
+        Atomics.store(stream[kImpl].state, WRITE_INDEX, 0);
+      });
+      Atomics.notify(stream[kImpl].state, READ_INDEX);
+    }
     var FakeWeakRef = class {
       constructor(value) {
         this._value = value;
@@ -2053,6 +2088,7 @@ var require_thread_stream = __commonJS({
       const toExecute = bundlerOverrides["thread-stream-worker"] || join(__dirname, "lib", "worker.js");
       const worker = new Worker(toExecute, {
         ...opts.workerOpts,
+        name: opts.workerOpts?.name || "thread-stream",
         trackUnmanagedFds: false,
         workerData: {
           filename: filename.indexOf("file://") === 0 ? filename : pathToFileURL(filename).href,
@@ -2080,50 +2116,40 @@ var require_thread_stream = __commonJS({
       }
     }
     function nextFlush(stream) {
-      const writeIndex = Atomics.load(stream[kImpl].state, WRITE_INDEX);
-      let leftover = stream[kImpl].data.length - writeIndex;
-      if (leftover > 0) {
-        if (stream[kImpl].buf.length === 0) {
-          stream[kImpl].flushing = false;
-          if (stream[kImpl].ending) {
-            end(stream);
-          } else if (stream[kImpl].needDrain) {
-            process.nextTick(drain, stream);
-          }
+      while (true) {
+        const writeIndex = Atomics.load(stream[kImpl].state, WRITE_INDEX);
+        if (stream.destroyed || writeIndex < 0) {
           return;
         }
-        let toWrite = stream[kImpl].buf.slice(0, leftover);
-        let toWriteBytes = Buffer.byteLength(toWrite);
-        if (toWriteBytes <= leftover) {
-          stream[kImpl].buf = stream[kImpl].buf.slice(leftover);
-          write(stream, toWrite, nextFlush.bind(null, stream));
-        } else {
-          stream.flush(() => {
+        const leftover = stream[kImpl].data.length - writeIndex;
+        if (leftover > 0) {
+          if (stream[kImpl].bufLen === 0) {
+            stream[kImpl].flushing = false;
+            if (stream[kImpl].ending) {
+              end(stream);
+            } else if (stream[kImpl].needDrain) {
+              process.nextTick(drain, stream);
+            }
+            return;
+          }
+          write(stream, leftover, noop);
+          continue;
+        }
+        if (leftover === 0) {
+          if (writeIndex === 0 && stream[kImpl].bufLen === 0) {
+            return;
+          }
+          waitForRead(stream, () => {
             if (stream.destroyed) {
               return;
             }
-            Atomics.store(stream[kImpl].state, READ_INDEX, 0);
-            Atomics.store(stream[kImpl].state, WRITE_INDEX, 0);
-            while (toWriteBytes > stream[kImpl].data.length) {
-              leftover = leftover / 2;
-              toWrite = stream[kImpl].buf.slice(0, leftover);
-              toWriteBytes = Buffer.byteLength(toWrite);
-            }
-            stream[kImpl].buf = stream[kImpl].buf.slice(leftover);
-            write(stream, toWrite, nextFlush.bind(null, stream));
+            resetIndexes(stream);
+            nextFlush(stream);
           });
-        }
-      } else if (leftover === 0) {
-        if (writeIndex === 0 && stream[kImpl].buf.length === 0) {
           return;
         }
-        stream.flush(() => {
-          Atomics.store(stream[kImpl].state, READ_INDEX, 0);
-          Atomics.store(stream[kImpl].state, WRITE_INDEX, 0);
-          nextFlush(stream);
-        });
-      } else {
         destroy(stream, new Error("overwritten"));
+        return;
       }
     }
     function onWorkerMessage(msg) {
@@ -2133,10 +2159,15 @@ var require_thread_stream = __commonJS({
         this.terminate();
         return;
       }
+      if (msg?.code == null) {
+        return;
+      }
       switch (msg.code) {
         case "READY":
-          this.stream = new WeakRef2(stream);
-          stream.flush(() => {
+          if (!stream[kImpl].ending) {
+            this.stream = new WeakRef2(stream);
+          }
+          waitForRead(stream, () => {
             stream[kImpl].ready = true;
             stream.emit("ready");
           });
@@ -2151,6 +2182,18 @@ var require_thread_stream = __commonJS({
             stream.emit(msg.name, msg.args);
           }
           break;
+        case "FLUSHED": {
+          if (msg.context !== "thread-stream") {
+            destroy(stream, new Error("this should not happen: " + msg.code));
+            break;
+          }
+          const cb = stream[kImpl].flushCallbacks.get(msg.id);
+          if (cb) {
+            stream[kImpl].flushCallbacks.delete(msg.id);
+            process.nextTick(cb);
+          }
+          break;
+        }
         case "WARNING":
           process.emitWarning(msg.err);
           break;
@@ -2189,13 +2232,20 @@ var require_thread_stream = __commonJS({
         this[kImpl].finished = false;
         this[kImpl].errored = null;
         this[kImpl].closed = false;
-        this[kImpl].buf = "";
+        this[kImpl].buf = [];
+        this[kImpl].bufHead = 0;
+        this[kImpl].bufLen = 0;
+        this[kImpl].flushCallbacks = /* @__PURE__ */ new Map();
+        this[kImpl].nextFlushId = 0;
+        this[kImpl].flushRetainCount = 0;
+        this[kImpl].userRef = true;
         this.worker = createWorker(this, opts);
         this.on("message", (message, transferList) => {
           this.worker.postMessage(message, transferList);
         });
       }
       write(data) {
+        const dataBuf = Buffer.isBuffer(data) ? data : Buffer.from(data);
         if (this[kImpl].destroyed) {
           error(this, new Error("the worker has exited"));
           return false;
@@ -2204,7 +2254,7 @@ var require_thread_stream = __commonJS({
           error(this, new Error("the worker is ending"));
           return false;
         }
-        if (this[kImpl].flushing && this[kImpl].buf.length + data.length >= MAX_STRING) {
+        if (this[kImpl].flushing && this[kImpl].bufLen + dataBuf.length >= MAX_STRING) {
           try {
             writeSync(this);
             this[kImpl].flushing = true;
@@ -2213,7 +2263,8 @@ var require_thread_stream = __commonJS({
             return false;
           }
         }
-        this[kImpl].buf += data;
+        this[kImpl].buf.push(dataBuf);
+        this[kImpl].bufLen += dataBuf.length;
         if (this[kImpl].sync) {
           try {
             writeSync(this);
@@ -2227,7 +2278,7 @@ var require_thread_stream = __commonJS({
           this[kImpl].flushing = true;
           setImmediate(nextFlush, this);
         }
-        this[kImpl].needDrain = this[kImpl].data.length - this[kImpl].buf.length - Atomics.load(this[kImpl].state, WRITE_INDEX) <= 0;
+        this[kImpl].needDrain = this[kImpl].data.length - this[kImpl].bufLen - Atomics.load(this[kImpl].state, WRITE_INDEX) <= 0;
         return !this[kImpl].needDrain;
       }
       end() {
@@ -2235,27 +2286,32 @@ var require_thread_stream = __commonJS({
           return;
         }
         this[kImpl].ending = true;
+        this.worker.stream = new FakeWeakRef(this);
         end(this);
       }
       flush(cb) {
-        if (this[kImpl].destroyed) {
-          if (typeof cb === "function") {
-            process.nextTick(cb, new Error("the worker has exited"));
-          }
-          return;
+        const userCb = typeof cb === "function" ? cb : null;
+        cb = userCb || noop;
+        if (userCb) {
+          retainWorkerForPendingFlush(this);
         }
-        const writeIndex = Atomics.load(this[kImpl].state, WRITE_INDEX);
-        wait(this[kImpl].state, READ_INDEX, writeIndex, Infinity, (err, res) => {
+        let finished = false;
+        const done = (err) => {
+          if (finished) {
+            return;
+          }
+          finished = true;
+          if (userCb) {
+            releaseWorkerForPendingFlush(this);
+          }
+          cb(err);
+        };
+        flushBuffer(this, (err) => {
           if (err) {
-            destroy(this, err);
-            process.nextTick(cb, err);
+            process.nextTick(done, err);
             return;
           }
-          if (res === "not-equal") {
-            this.flush(cb);
-            return;
-          }
-          process.nextTick(cb);
+          requestWorkerFlush(this, done);
         });
       }
       flushSync() {
@@ -2266,9 +2322,13 @@ var require_thread_stream = __commonJS({
         flushSync(this);
       }
       unref() {
-        this.worker.unref();
+        this[kImpl].userRef = false;
+        if (this[kImpl].flushRetainCount === 0) {
+          this.worker.unref();
+        }
       }
       ref() {
+        this[kImpl].userRef = true;
         this.worker.ref();
       }
       get ready() {
@@ -2299,6 +2359,94 @@ var require_thread_stream = __commonJS({
         return this[kImpl].errored;
       }
     };
+    function flushBuffer(stream, cb) {
+      if (stream[kImpl].destroyed) {
+        process.nextTick(cb, new Error("the worker has exited"));
+        return;
+      }
+      if (!stream[kImpl].sync && (stream[kImpl].flushing || stream[kImpl].bufLen > 0)) {
+        setImmediate(flushBuffer, stream, cb);
+        return;
+      }
+      waitForRead(stream, cb);
+    }
+    function waitForRead(stream, cb) {
+      const writeIndex = Atomics.load(stream[kImpl].state, WRITE_INDEX);
+      wait(stream[kImpl].state, READ_INDEX, writeIndex, Infinity, (err, res) => {
+        if (err) {
+          destroy(stream, err);
+          cb(err);
+          return;
+        }
+        if (res !== "ok") {
+          waitForRead(stream, cb);
+          return;
+        }
+        cb();
+      });
+    }
+    function retainWorkerForPendingFlush(stream) {
+      if (stream[kImpl].flushRetainCount === 0) {
+        stream.worker.ref();
+      }
+      stream[kImpl].flushRetainCount++;
+    }
+    function releaseWorkerForPendingFlush(stream) {
+      if (stream[kImpl].flushRetainCount === 0) {
+        return;
+      }
+      stream[kImpl].flushRetainCount--;
+      if (stream[kImpl].flushRetainCount === 0 && !stream[kImpl].userRef) {
+        stream.worker.unref();
+      }
+    }
+    function requestWorkerFlush(stream, cb) {
+      if (stream[kImpl].destroyed) {
+        process.nextTick(cb, new Error("the worker has exited"));
+        return;
+      }
+      if (!stream[kImpl].ready) {
+        const onReady = () => {
+          cleanup();
+          requestWorkerFlush(stream, cb);
+        };
+        const onClose = () => {
+          cleanup();
+          process.nextTick(cb, new Error("the worker has exited"));
+        };
+        const cleanup = () => {
+          stream.off("ready", onReady);
+          stream.off("close", onClose);
+        };
+        stream.once("ready", onReady);
+        stream.once("close", onClose);
+        return;
+      }
+      const id = ++stream[kImpl].nextFlushId;
+      stream[kImpl].flushCallbacks.set(id, cb);
+      try {
+        stream.worker.postMessage({
+          code: "FLUSH",
+          context: "thread-stream",
+          id
+        });
+      } catch (err) {
+        stream[kImpl].flushCallbacks.delete(id);
+        destroy(stream, err);
+        process.nextTick(cb, err);
+      }
+    }
+    function failPendingFlushCallbacks(stream, err) {
+      const callbacks = stream[kImpl].flushCallbacks;
+      if (callbacks.size === 0) {
+        return;
+      }
+      const flushErr = err || new Error("the worker has exited");
+      for (const cb of callbacks.values()) {
+        process.nextTick(cb, flushErr);
+      }
+      callbacks.clear();
+    }
     function error(stream, err) {
       setImmediate(() => {
         stream.emit("error", err);
@@ -2309,6 +2457,7 @@ var require_thread_stream = __commonJS({
         return;
       }
       stream[kImpl].destroyed = true;
+      failPendingFlushCallbacks(stream, err);
       if (err) {
         stream[kImpl].errored = err;
         error(stream, err);
@@ -2326,12 +2475,37 @@ var require_thread_stream = __commonJS({
         });
       }
     }
-    function write(stream, data, cb) {
+    function write(stream, maxBytes, cb) {
       const current = Atomics.load(stream[kImpl].state, WRITE_INDEX);
-      const length = Buffer.byteLength(data);
-      stream[kImpl].data.write(data, current);
-      Atomics.store(stream[kImpl].state, WRITE_INDEX, current + length);
-      Atomics.notify(stream[kImpl].state, WRITE_INDEX);
+      let offset = current;
+      let remaining = maxBytes;
+      while (remaining > 0 && stream[kImpl].bufLen !== 0) {
+        const head = stream[kImpl].bufHead;
+        const buf = stream[kImpl].buf[head];
+        if (buf.length <= remaining) {
+          buf.copy(stream[kImpl].data, offset);
+          offset += buf.length;
+          remaining -= buf.length;
+          stream[kImpl].bufLen -= buf.length;
+          stream[kImpl].bufHead = head + 1;
+          if (stream[kImpl].bufHead === stream[kImpl].buf.length) {
+            stream[kImpl].buf.length = 0;
+            stream[kImpl].bufHead = 0;
+          } else if (stream[kImpl].bufHead >= 1024 && stream[kImpl].bufHead * 2 >= stream[kImpl].buf.length) {
+            stream[kImpl].buf.splice(0, stream[kImpl].bufHead);
+            stream[kImpl].bufHead = 0;
+          }
+          continue;
+        }
+        buf.copy(stream[kImpl].data, offset, 0, remaining);
+        stream[kImpl].buf[head] = buf.subarray(remaining);
+        stream[kImpl].bufLen -= remaining;
+        offset += remaining;
+        remaining = 0;
+      }
+      updateState(stream, () => {
+        Atomics.store(stream[kImpl].state, WRITE_INDEX, offset);
+      });
       cb();
       return true;
     }
@@ -2343,8 +2517,9 @@ var require_thread_stream = __commonJS({
       try {
         stream.flushSync();
         let readIndex = Atomics.load(stream[kImpl].state, READ_INDEX);
-        Atomics.store(stream[kImpl].state, WRITE_INDEX, -1);
-        Atomics.notify(stream[kImpl].state, WRITE_INDEX);
+        updateState(stream, () => {
+          Atomics.store(stream[kImpl].state, WRITE_INDEX, -1);
+        });
         let spins = 0;
         while (readIndex !== -1) {
           Atomics.wait(stream[kImpl].state, READ_INDEX, readIndex, 1e3);
@@ -2375,34 +2550,20 @@ var require_thread_stream = __commonJS({
         }
       };
       stream[kImpl].flushing = false;
-      while (stream[kImpl].buf.length !== 0) {
+      while (stream[kImpl].bufLen !== 0) {
         const writeIndex = Atomics.load(stream[kImpl].state, WRITE_INDEX);
-        let leftover = stream[kImpl].data.length - writeIndex;
+        if (writeIndex < 0) {
+          throw new Error("_writeSync failed");
+        }
+        const leftover = stream[kImpl].data.length - writeIndex;
         if (leftover === 0) {
           flushSync(stream);
-          Atomics.store(stream[kImpl].state, READ_INDEX, 0);
-          Atomics.store(stream[kImpl].state, WRITE_INDEX, 0);
+          resetIndexes(stream);
           continue;
         } else if (leftover < 0) {
           throw new Error("overwritten");
         }
-        let toWrite = stream[kImpl].buf.slice(0, leftover);
-        let toWriteBytes = Buffer.byteLength(toWrite);
-        if (toWriteBytes <= leftover) {
-          stream[kImpl].buf = stream[kImpl].buf.slice(leftover);
-          write(stream, toWrite, cb);
-        } else {
-          flushSync(stream);
-          Atomics.store(stream[kImpl].state, READ_INDEX, 0);
-          Atomics.store(stream[kImpl].state, WRITE_INDEX, 0);
-          while (toWriteBytes > stream[kImpl].buf.length) {
-            leftover = leftover / 2;
-            toWrite = stream[kImpl].buf.slice(0, leftover);
-            toWriteBytes = Buffer.byteLength(toWrite);
-          }
-          stream[kImpl].buf = stream[kImpl].buf.slice(leftover);
-          write(stream, toWrite, cb);
-        }
+        write(stream, leftover, cb);
       }
     }
     function flushSync(stream) {
@@ -2430,16 +2591,19 @@ var require_thread_stream = __commonJS({
   }
 });
 
-// node_modules/.pnpm/pino@9.14.0/node_modules/pino/lib/transport.js
+// ../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/lib/transport.js
 var require_transport = __commonJS({
-  "node_modules/.pnpm/pino@9.14.0/node_modules/pino/lib/transport.js"(exports, module) {
+  "../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/lib/transport.js"(exports, module) {
     "use strict";
     var { createRequire } = __require("module");
+    var { existsSync } = __require("node:fs");
     var getCallers = require_caller();
     var { join, isAbsolute, sep } = __require("node:path");
+    var { fileURLToPath } = __require("node:url");
     var sleep = require_atomic_sleep();
     var onExit = require_on_exit_leak_free();
     var ThreadStream = require_thread_stream();
+    var { transportUsesMultistreamSym } = require_symbols();
     function setupOnExit(stream) {
       onExit.register(stream, autoEnd);
       onExit.registerBeforeExit(stream, flush);
@@ -2447,7 +2611,96 @@ var require_transport = __commonJS({
         onExit.unregister(stream);
       });
     }
-    function buildStream(filename, workerData, workerOpts, sync) {
+    function hasPreloadFlags() {
+      const execArgv = process.execArgv;
+      for (let i = 0; i < execArgv.length; i++) {
+        const arg = execArgv[i];
+        if (arg === "--import" || arg === "--require" || arg === "-r") {
+          return true;
+        }
+        if (arg.startsWith("--import=") || arg.startsWith("--require=") || arg.startsWith("-r=")) {
+          return true;
+        }
+      }
+      return false;
+    }
+    function sanitizeNodeOptions(nodeOptions) {
+      const tokens = nodeOptions.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g);
+      if (!tokens) {
+        return nodeOptions;
+      }
+      const sanitized = [];
+      let changed = false;
+      for (let i = 0; i < tokens.length; i++) {
+        const token = tokens[i];
+        if (token === "--require" || token === "-r" || token === "--import") {
+          const next = tokens[i + 1];
+          if (next && shouldDropPreload(next)) {
+            changed = true;
+            i++;
+            continue;
+          }
+          sanitized.push(token);
+          if (next) {
+            sanitized.push(next);
+            i++;
+          }
+          continue;
+        }
+        if (token.startsWith("--require=") || token.startsWith("-r=") || token.startsWith("--import=")) {
+          const value = token.slice(token.indexOf("=") + 1);
+          if (shouldDropPreload(value)) {
+            changed = true;
+            continue;
+          }
+        }
+        sanitized.push(token);
+      }
+      return changed ? sanitized.join(" ") : nodeOptions;
+    }
+    function shouldDropPreload(value) {
+      const unquoted = stripQuotes(value);
+      if (!unquoted) {
+        return false;
+      }
+      let path = unquoted;
+      if (path.startsWith("file://")) {
+        try {
+          path = fileURLToPath(path);
+        } catch {
+          return false;
+        }
+      }
+      return isAbsolute(path) && !existsSync(path);
+    }
+    function stripQuotes(value) {
+      const first = value[0];
+      const last = value[value.length - 1];
+      if (first === '"' && last === '"' || first === "'" && last === "'") {
+        return value.slice(1, -1);
+      }
+      return value;
+    }
+    function buildStream(filename, workerData, workerOpts, sync, name) {
+      if (!workerOpts.execArgv && hasPreloadFlags() && __require.main === void 0) {
+        workerOpts = {
+          ...workerOpts,
+          execArgv: []
+        };
+      }
+      if (!workerOpts.env && process.env.NODE_OPTIONS) {
+        const nodeOptions = sanitizeNodeOptions(process.env.NODE_OPTIONS);
+        if (nodeOptions !== process.env.NODE_OPTIONS) {
+          workerOpts = {
+            ...workerOpts,
+            env: {
+              ...process.env,
+              NODE_OPTIONS: nodeOptions
+            }
+          };
+        }
+      }
+      workerOpts = { ...workerOpts, name };
       const stream = new ThreadStream({
         filename,
         workerData,
@@ -2492,8 +2745,9 @@ var require_transport = __commonJS({
       const options = {
         ...fullOptions.options
       };
+      let usesMultistream = false;
       const callers = typeof caller === "string" ? [caller] : caller;
-      const bundlerOverrides = "__bundlerPathsOverrides" in globalThis ? globalThis.__bundlerPathsOverrides : {};
+      const bundlerOverrides = typeof globalThis === "object" && Object.prototype.hasOwnProperty.call(globalThis, "__bundlerPathsOverrides") && globalThis.__bundlerPathsOverrides && typeof globalThis.__bundlerPathsOverrides === "object" ? globalThis.__bundlerPathsOverrides : /* @__PURE__ */ Object.create(null);
       let target = fullOptions.target;
       if (target && targets) {
         throw new Error("only one of target or targets can be specified");
@@ -2516,6 +2770,9 @@ var require_transport = __commonJS({
             };
           });
         });
+        const targetsHaveLevel = options.targets.some((t) => t.level != null);
+        const pipelinesHaveLevel = options.pipelines.some((p) => p.some((t) => t.level != null));
+        usesMultistream = options.targets.length + options.pipelines.length > 1 || targetsHaveLevel || pipelinesHaveLevel;
       } else if (pipeline) {
         target = bundlerOverrides["pino-worker"] || join(__dirname, "worker.js");
         options.pipelines = [pipeline.map((dest) => {
@@ -2532,7 +2789,12 @@ var require_transport = __commonJS({
         options.dedupe = dedupe;
       }
       options.pinoWillSendConfig = true;
-      return buildStream(fixTarget(target), options, worker, sync);
+      const name = targets || pipeline ? "pino.transport" : target;
+      const stream = buildStream(fixTarget(target), options, worker, sync, name);
+      if (usesMultistream) {
+        stream[transportUsesMultistreamSym] = true;
+      }
+      return stream;
       function fixTarget(origin) {
         origin = bundlerOverrides[origin] || origin;
         if (isAbsolute(origin) || origin.indexOf("file://") === 0) {
@@ -2561,9 +2823,9 @@ var require_transport = __commonJS({
   }
 });
 
-// node_modules/.pnpm/pino@9.14.0/node_modules/pino/lib/tools.js
+// ../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/lib/tools.js
 var require_tools = __commonJS({
-  "node_modules/.pnpm/pino@9.14.0/node_modules/pino/lib/tools.js"(exports, module) {
+  "../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/lib/tools.js"(exports, module) {
     "use strict";
     var diagChan = __require("node:diagnostics_channel");
     var format = require_quick_format_unescaped();
@@ -2590,17 +2852,9 @@ var require_tools = __commonJS({
     } = require_symbols();
     var { isMainThread } = __require("worker_threads");
     var transport = require_transport();
-    var asJsonChan;
-    if (typeof diagChan.tracingChannel === "function") {
-      asJsonChan = diagChan.tracingChannel("pino_asJson");
-    } else {
-      asJsonChan = {
-        hasSubscribers: false,
-        traceSync(fn, store, thisArg, ...args) {
-          return fn.call(thisArg, ...args);
-        }
-      };
-    }
+    var [nodeMajor] = process.versions.node.split(".").map((v) => Number(v));
+    var asJsonChan = diagChan.tracingChannel("pino_asJson");
+    var asString = nodeMajor >= 25 ? (str) => JSON.stringify(str) : _asString;
     function noop() {
     }
     function genLog(level, hook) {
@@ -2638,7 +2892,7 @@ var require_tools = __commonJS({
         }
       }
     }
-    function asString(str) {
+    function _asString(str) {
       let result = "";
       let last = 0;
       let found = false;
@@ -2767,7 +3021,7 @@ var require_tools = __commonJS({
           value = serializers[key] ? serializers[key](value) : value;
           value = (stringifiers[key] || wildcardStringifier || stringify2)(value, stringifySafe);
           if (value === void 0) continue;
-          data += ',"' + key + '":' + value;
+          data += "," + asString(key) + ":" + value;
         }
       }
       return data;
@@ -2837,7 +3091,7 @@ var require_tools = __commonJS({
           stream = transport({ caller, ...opts.transport, levels: customLevels });
         }
         opts = Object.assign({}, defaultOptions, opts);
-        opts.serializers = Object.assign({}, defaultOptions.serializers, opts.serializers);
+        opts.serializers = Object.assign(/* @__PURE__ */ Object.create(null), defaultOptions.serializers, opts.serializers);
         opts.formatters = Object.assign({}, defaultOptions.formatters, opts.formatters);
         if (opts.prettyPrint) {
           throw new Error("prettyPrint option is no longer supported, see the pino-pretty package (https://github.com/pinojs/pino-pretty)");
@@ -2898,9 +3152,9 @@ var require_tools = __commonJS({
   }
 });
 
-// node_modules/.pnpm/pino@9.14.0/node_modules/pino/lib/constants.js
+// ../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/lib/constants.js
 var require_constants = __commonJS({
-  "node_modules/.pnpm/pino@9.14.0/node_modules/pino/lib/constants.js"(exports, module) {
+  "../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/lib/constants.js"(exports, module) {
     var DEFAULT_LEVELS = {
       trace: 10,
       debug: 20,
@@ -2920,9 +3174,9 @@ var require_constants = __commonJS({
   }
 });
 
-// node_modules/.pnpm/pino@9.14.0/node_modules/pino/lib/levels.js
+// ../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/lib/levels.js
 var require_levels = __commonJS({
-  "node_modules/.pnpm/pino@9.14.0/node_modules/pino/lib/levels.js"(exports, module) {
+  "../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/lib/levels.js"(exports, module) {
     "use strict";
     var {
       lsCacheSym,
@@ -3113,17 +3367,17 @@ var require_levels = __commonJS({
   }
 });
 
-// node_modules/.pnpm/pino@9.14.0/node_modules/pino/lib/meta.js
+// ../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/lib/meta.js
 var require_meta = __commonJS({
-  "node_modules/.pnpm/pino@9.14.0/node_modules/pino/lib/meta.js"(exports, module) {
+  "../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/lib/meta.js"(exports, module) {
     "use strict";
-    module.exports = { version: "9.14.0" };
+    module.exports = { version: "10.4.0" };
   }
 });
 
-// node_modules/.pnpm/pino@9.14.0/node_modules/pino/lib/proto.js
+// ../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/lib/proto.js
 var require_proto = __commonJS({
-  "node_modules/.pnpm/pino@9.14.0/node_modules/pino/lib/proto.js"(exports, module) {
+  "../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/lib/proto.js"(exports, module) {
     "use strict";
     var { EventEmitter } = __require("node:events");
     var {
@@ -3132,7 +3386,6 @@ var require_proto = __commonJS({
       setLevelSym,
       getLevelSym,
       chindingsSym,
-      parsedChindingsSym,
       mixinSym,
       asJsonSym,
       writeSym,
@@ -3228,7 +3481,6 @@ var require_proto = __commonJS({
           );
         }
         instance[chindingsSym] = asChindings(instance, bindings2);
-        instance[setLevelSym](this.level);
         if (this.onChild !== noop) {
           this.onChild(instance);
         }
@@ -3284,8 +3536,10 @@ var require_proto = __commonJS({
         instance[msgPrefixSym] = (this[msgPrefixSym] || "") + options.msgPrefix;
       }
       instance[chindingsSym] = asChindings(instance, bindings2);
-      const childLevel = options.level || this.level;
-      instance[setLevelSym](childLevel);
+      if (options.level !== void 0 && options.level !== this.level || options.hasOwnProperty("customLevels")) {
+        const childLevel = options.level || this.level;
+        instance[setLevelSym](childLevel);
+      }
       this.onChild(instance);
       return instance;
     }
@@ -3300,7 +3554,6 @@ var require_proto = __commonJS({
     function setBindings(newBindings) {
       const chindings = asChindings(this, newBindings);
       this[chindingsSym] = chindings;
-      delete this[parsedChindingsSym];
     }
     function defaultMixinMergeStrategy(mergeObject, mixinObject) {
       return Object.assign(mixinObject, mergeObject);
@@ -3352,9 +3605,9 @@ var require_proto = __commonJS({
   }
 });
 
-// node_modules/.pnpm/safe-stable-stringify@2.5.0/node_modules/safe-stable-stringify/index.js
+// ../../node_modules/.pnpm/safe-stable-stringify@2.5.0/node_modules/safe-stable-stringify/index.js
 var require_safe_stable_stringify = __commonJS({
-  "node_modules/.pnpm/safe-stable-stringify@2.5.0/node_modules/safe-stable-stringify/index.js"(exports, module) {
+  "../../node_modules/.pnpm/safe-stable-stringify@2.5.0/node_modules/safe-stable-stringify/index.js"(exports, module) {
     "use strict";
     var { hasOwnProperty } = Object.prototype;
     var stringify = configure();
@@ -3948,9 +4201,9 @@ ${originalIndentation}`;
   }
 });
 
-// node_modules/.pnpm/pino@9.14.0/node_modules/pino/lib/multistream.js
+// ../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/lib/multistream.js
 var require_multistream = __commonJS({
-  "node_modules/.pnpm/pino@9.14.0/node_modules/pino/lib/multistream.js"(exports, module) {
+  "../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/lib/multistream.js"(exports, module) {
     "use strict";
     var metadata = /* @__PURE__ */ Symbol.for("pino.metadata");
     var { DEFAULT_LEVELS } = require_constants();
@@ -3988,7 +4241,7 @@ var require_multistream = __commonJS({
       return res;
       function write(data) {
         let dest;
-        const level = this.lastLevel;
+        const level = typeof this.lastLevel === "string" ? (this.streamLevels || streamLevels)[this.lastLevel] : this.lastLevel;
         const { streams } = this;
         let recordedLevel = 0;
         let stream;
@@ -4032,7 +4285,7 @@ var require_multistream = __commonJS({
       }
       function add(dest) {
         if (!dest) {
-          return res;
+          return this;
         }
         const isStream = typeof dest.write === "function" || dest.stream;
         const stream_ = dest.write ? dest : dest.stream;
@@ -4059,7 +4312,7 @@ var require_multistream = __commonJS({
         streams.unshift(dest_);
         streams.sort(compareByLevel);
         this.minLevel = streams[0].level;
-        return res;
+        return this;
       }
       function remove(id) {
         const { streams } = this;
@@ -4069,7 +4322,7 @@ var require_multistream = __commonJS({
           streams.sort(compareByLevel);
           this.minLevel = streams.length > 0 ? streams[0].level : -1;
         }
-        return res;
+        return this;
       }
       function end() {
         for (const { stream } of this.streams) {
@@ -4091,12 +4344,14 @@ var require_multistream = __commonJS({
           write,
           add,
           remove,
+          emit,
+          flushSync,
+          end,
           minLevel: level,
           streams,
           clone,
-          emit,
-          flushSync,
-          [metadata]: true
+          [metadata]: true,
+          streamLevels
         };
       }
     }
@@ -4116,9 +4371,9 @@ var require_multistream = __commonJS({
   }
 });
 
-// node_modules/.pnpm/pino@9.14.0/node_modules/pino/pino.js
+// ../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/pino.js
 var require_pino = __commonJS({
-  "node_modules/.pnpm/pino@9.14.0/node_modules/pino/pino.js"(exports, module) {
+  "../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/pino.js"(exports, module) {
     function pinoBundlerAbsolutePath(p) {
       try {
         const path = __require("path");
@@ -4173,7 +4428,8 @@ var require_pino = __commonJS({
       hooksSym,
       nestedKeyStrSym,
       mixinMergeStrategySym,
-      msgPrefixSym
+      msgPrefixSym,
+      transportUsesMultistreamSym
     } = symbols;
     var { epochTime, nullTime } = time;
     var { pid } = process;
@@ -4252,7 +4508,7 @@ var require_pino = __commonJS({
       const stringifyFn = stringify.bind({
         [stringifySafeSym]: stringifySafe
       });
-      const stringifiers = redact ? redaction(redact, stringifyFn) : {};
+      const stringifiers = redact ? Object.assign(/* @__PURE__ */ Object.create(null), redaction(redact, stringifyFn)) : /* @__PURE__ */ Object.create(null);
       const formatOpts = redact ? { stringify: stringifiers[redactFmtSym] } : { stringify: stringifyFn };
       const end = "}" + (crlf ? "\r\n" : "\n");
       const coreChindings = asChindings.bind(null, {
@@ -4278,6 +4534,26 @@ var require_pino = __commonJS({
       if (msgPrefix && typeof msgPrefix !== "string") throw Error(`Unknown msgPrefix type "${typeof msgPrefix}" - expected "string"`);
       assertDefaultLevelFound(level, customLevels, useOnlyCustomLevels);
       const levels = mappings(customLevels, useOnlyCustomLevels);
+      if (stream && stream[transportUsesMultistreamSym] === true) {
+        let sampleLabel = typeof level === "string" ? level : void 0;
+        if (!sampleLabel || levels[sampleLabel] === void 0) {
+          sampleLabel = Object.keys(levels)[0];
+        }
+        const sampleNumber = levels[sampleLabel];
+        let ok = false;
+        try {
+          const formatted = formatters.level(sampleLabel, sampleNumber);
+          ok = formatted && typeof formatted === "object" && formatted.level === sampleNumber;
+        } catch {
+          ok = false;
+        }
+        if (!ok) {
+          process.emitWarning(
+            'custom formatters.level detected with multiple transport targets/pipelines; ensure logs include a numeric "level" field or they may be dropped',
+            { code: "PINO_TRANSPORT_MULTI_TARGETS_LEVEL_FORMATTER" }
+          );
+        }
+      }
       if (typeof stream.emit === "function") {
         stream.emit("message", { code: "PINO_CONFIG", config: { levels, messageKey, errorKey } });
       }
@@ -4336,9 +4612,9 @@ var require_pino = __commonJS({
   }
 });
 
-// node_modules/.pnpm/pino@9.14.0/node_modules/pino/file.js
+// ../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/file.js
 var require_file = __commonJS({
-  "node_modules/.pnpm/pino@9.14.0/node_modules/pino/file.js"(exports, module) {
+  "../../node_modules/.pnpm/pino@10.4.0/node_modules/pino/file.js"(exports, module) {
     var pino = require_pino();
     var { once } = __require("node:events");
     module.exports = async function(opts = {}) {
