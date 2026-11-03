@@ -1,9 +1,9 @@
 import React, { useCallback } from 'react';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { BackHandler, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useColors } from '@/hooks/useColors';
-import { Screen, Wordmark } from '@/components/ui';
+import { Screen, Wordmark, Avatar } from '@/components/ui';
 import { useTalentIQ } from '@/state/TalentIQContext';
 
 export default function WelcomeScreen() {
@@ -56,7 +56,7 @@ export default function WelcomeScreen() {
         </Text>
         <View style={styles.matchPreview}>
           <View style={styles.matchAvatar}>
-            <Image source={require('@/assets/images/icon.png')} style={styles.previewIcon} />
+            <Avatar initials="TQ" size={38} />
           </View>
           <View style={styles.matchTextBlock}>
             <Text style={[styles.matchTitle, { color: '#FFFFFF' }]}>Your next great fit</Text>
@@ -143,7 +143,6 @@ const styles = StyleSheet.create({
   heroCopy: { marginTop: 14, maxWidth: 280, fontFamily: 'Inter_400Regular', fontSize: 14, lineHeight: 21, opacity: 0.76 },
   matchPreview: { marginTop: 24, padding: 12, borderRadius: 18, backgroundColor: '#263630', flexDirection: 'row', alignItems: 'center', gap: 11 },
   matchAvatar: { width: 38, height: 38, borderRadius: 14, overflow: 'hidden', backgroundColor: '#DCEBE3' },
-  previewIcon: { width: 38, height: 38 },
   matchTextBlock: { flex: 1, gap: 3 },
   matchTitle: { fontFamily: 'Inter_600SemiBold', fontSize: 12 },
   matchSub: { fontFamily: 'Inter_400Regular', fontSize: 10, opacity: 0.64 },

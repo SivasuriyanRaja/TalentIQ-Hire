@@ -84,7 +84,7 @@ export const initialProfile: CandidateProfile = {
   headline: 'Full Stack & AI Systems Engineer',
   location: 'Bengaluru, India',
   yearsExperience: 4,
-  skills: ['React', 'TypeScript', 'Node.js', 'Python', 'PostgreSQL', 'Docker'],
+  skills: [],
   education: 'B.Tech in Computer Science & Engineering',
   resumeLink: '',
   resumeFileName: undefined,
